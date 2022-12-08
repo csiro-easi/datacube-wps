@@ -117,44 +117,38 @@ This part is flow-on from Workflow testing
 
 curl -H "Content-Type: text/xml" -d @wpsrequest.xml -X POST localhost:8000?service=WPS&request=Execute
 
-- Example of an XML request document for a buffer process (not implemented in this repository):
+- Example of a request XML for the implemented mangrove drill process.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<wps:Execute version="1.0.0" service="WPS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
-  <ows:Identifier>JTS:buffer</ows:Identifier>
+<wps:Execute version="1.0.0" service="WPS" xml:lang="en-US" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsDescribeProcess_response.xsd">
+  <ows:Identifier>Mangrove Cover Drill</ows:Identifier>
   <wps:DataInputs>
     <wps:Input>
-      <ows:Identifier>geom</ows:Identifier>
+      <ows:Identifier>geometry</ows:Identifier>
       <wps:Data>
-        <wps:ComplexData mimeType="application/wkt"><![CDATA[POINT(0 0)]]></wps:ComplexData>
+        <wps:ComplexData mimeType="application/vnd.geo+json"><![CDATA[{"features": [{"geometry": {"type": "Polygon", "coordinates": [[[153.1, -27.4], [153.3, -27.4], [153.3, -27.2], [153.1, -27.2], [153.1, -27.4]]]}, "crs": "EPSG:4326"}]}]]></wps:ComplexData>
       </wps:Data>
     </wps:Input>
     <wps:Input>
-      <ows:Identifier>distance</ows:Identifier>
+      <ows:Identifier>start</ows:Identifier>
       <wps:Data>
-        <wps:LiteralData>10</wps:LiteralData>
+        <wps:ComplexData mimeType="application/vnd.geo+json"><![CDATA[{"properties": {"timestamp": {"date-time": "2019-01-01"}}}]]></wps:ComplexData>
       </wps:Data>
     </wps:Input>
     <wps:Input>
-      <ows:Identifier>quadrantSegments</ows:Identifier>
+      <ows:Identifier>end</ows:Identifier>
       <wps:Data>
-        <wps:LiteralData>1</wps:LiteralData>
-      </wps:Data>
-    </wps:Input>
-    <wps:Input>
-      <ows:Identifier>capStyle</ows:Identifier>
-      <wps:Data>
-        <wps:LiteralData>flat</wps:LiteralData>
+        <wps:ComplexData mimeType="application/vnd.geo+json"><![CDATA[{"properties": {"timestamp": {"date-time": "2019-03-01"}}}]]></wps:ComplexData>
       </wps:Data>
     </wps:Input>
   </wps:DataInputs>
   <wps:ResponseForm>
-    <wps:RawDataOutput mimeType="application/gml-3.1.1">
-      <ows:Identifier>result</ows:Identifier>
+    <wps:RawDataOutput mimeType="application/vnd.terriajs.catalog-member+json">
+      <ows:Identifier>timeseries</ows:Identifier>
     </wps:RawDataOutput>
   </wps:ResponseForm>
 </wps:Execute>
 ```
 
-- See `./example_mangrove_drill.xml` for an example for an implemented process
+- See `./example_request.xml` for another example (process not implemented)

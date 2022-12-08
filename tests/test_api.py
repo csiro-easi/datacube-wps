@@ -69,7 +69,7 @@ def test_wofs():
     assert "chart" in results
 
 
-@pytest.mark.xfail(reason="Appears to be an incomplete implementation")
+@pytest.mark.xfail(reason="A more complicated example that requires updating")
 def test_wit():
     catalog = read_process_catalog("datacube-wps-config.yaml")
     wit_proc = [entry for entry in catalog if isinstance(entry, WIT)][0]

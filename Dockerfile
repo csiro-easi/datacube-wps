@@ -1,6 +1,6 @@
 ARG py_env_path=/env
 
-FROM csiroeasi/geobase-builder:develop.latest as env_builder
+FROM csiroeasi/geobase-builder:master.latest as env_builder
 
 ARG py_env_path
 
@@ -15,7 +15,7 @@ RUN ${py_env_path}/bin/python -m pip  install --no-cache-dir -r /conf/requiremen
 
 ENV PATH=${py_env_path}/bin:$PATH
 
-FROM csiroeasi/geobase-runner:develop.latest
+FROM csiroeasi/geobase-runner:master.latest
 
 RUN mkdir -p /code/logs
 RUN mkdir -p /code/outputs

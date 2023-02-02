@@ -1,7 +1,7 @@
 --extra-index-url="https://packages.dea.ga.gov.au"
 flask
 pywps
-gunicorn
+gunicorn[gevent]
 datacube
 altair
 altair_saver

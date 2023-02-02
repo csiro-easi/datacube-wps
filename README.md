@@ -105,7 +105,7 @@ This part is flow-on from Workflow testing
 ### DescribeProcess
 - Returns a description of a configured process in XML format (accepted input formats, data types etc.)
 - Returned XML provides framework for input data to execute described process.
-- Locally accessed via http://localhost:8000/?service=WPS&version=1.0.0&request=DescribeProcess&identifier=&lt;PROCESS NAME&gt;
+- Locally accessed via http://localhost:8000/?service=WPS&version=1.0.0&request=DescribeProcess&identifier=PROCESS-IDENTIFIER
 
 ### Execute
 - Runs a specified process.

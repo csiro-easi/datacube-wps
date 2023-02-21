@@ -274,8 +274,6 @@ def _render_outputs(
     name="Timeseries",
     header=True,
 ):
-    html_url = upload_chart_html_to_S3(chart, str(uuid))
-    img_url = upload_chart_svg_to_S3(chart, str(uuid))
 
     try:
         csv_df = df.drop(columns=["latitude", "longitude"])
@@ -301,8 +299,6 @@ def _render_outputs(
     output_json = json.dumps(output_dict, cls=DatetimeEncoder)
 
     outputs = {
-        "image": {"data": img_url},
-        "url": {"data": html_url},
         "timeseries": {"data": output_json},
     }
 
@@ -380,28 +376,16 @@ class PixelDrill(Process):
         if parameters is None:
             parameters = {}
 
-        if dask_client is None:
-            dask_client = Client(
-                n_workers=1, processes=False, threads_per_worker=num_workers()
-            )
+        with datacube.Datacube() as dc:
+            data = self.input_data(dc, time, feature, dask_client)
 
-        with dask_client:
-            configure_s3_access(
-                aws_unsigned=True,
-                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
-                client=dask_client,
-            )
-
-            with datacube.Datacube() as dc:
-                data = self.input_data(dc, time, feature)
-
-        df = self.process_data(data, {"time": time, "feature": feature, **parameters})
+        df = self.process_data(data, {"time": time, "feature": feature, **parameters}, dask_client)
         chart = self.render_chart(df)
 
         return {"data": df, "chart": chart}
 
     @log_call
-    def input_data(self, dc, time, feature):
+    def input_data(self, dc, time, feature, dask_client=None):
         if time is None:
             bag = self.input.query(dc, geopolygon=feature)
         else:
@@ -421,8 +405,11 @@ class PixelDrill(Process):
         lonlat = feature.coords[0]
         measurements = self.input.output_measurements(bag.product_definitions)
 
-        data = self.input.fetch(box, dask_chunks={"time": 1})
-        data = data.compute()
+        if dask_client:
+            data = self.input.fetch(box, dask_chunks={"time": 1})
+            data = data.compute()
+        else:
+            data = self.input.fetch(box)
 
         coords = {
             "longitude": np.array([lonlat[0]]),
@@ -444,7 +431,7 @@ class PixelDrill(Process):
             )
         return result
 
-    def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:
+    def process_data(self, data: xarray.Dataset, parameters: dict, dask_client) -> pandas.DataFrame:
         raise NotImplementedError
 
     def render_chart(self, df: pandas.DataFrame) -> altair.Chart:
@@ -527,27 +514,15 @@ class PolygonDrill(Process):
         if parameters is None:
             parameters = {}
 
-        if dask_client is None:
-            dask_client = Client(
-                n_workers=num_workers(), processes=True, threads_per_worker=1
-            )
+        with datacube.Datacube() as dc:
+            data = self.input_data(dc, time, feature, dask_client)
 
-        with dask_client:
-            configure_s3_access(
-                aws_unsigned=True,
-                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
-                client=dask_client,
-            )
-
-            with datacube.Datacube() as dc:
-                data = self.input_data(dc, time, feature)
-
-        df = self.process_data(data, {"time": time, "feature": feature, **parameters})
+        df = self.process_data(data, {"time": time, "feature": feature, **parameters}, dask_client)
         chart = self.render_chart(df)
 
         return {"data": df, "chart": chart}
 
-    def input_data(self, dc, time, feature):
+    def input_data(self, dc, time, feature, dask_client=None):
         if time is None:
             bag = self.input.query(dc, geopolygon=feature)
         else:
@@ -590,7 +565,11 @@ class PolygonDrill(Process):
             _guard_rail(self.input, box)
 
         # TODO customize the number of processes
-        data = self.input.fetch(box, dask_chunks={"time": 1})
+        if dask_client:
+            data = self.input.fetch(box, dask_chunks={"time": 1})
+        else:
+            data = self.input.fetch(box)
+
         mask = geometry_mask(
             feature, data.geobox, all_touched=self.mask_all_touched, invert=True
         )
@@ -606,7 +585,7 @@ class PolygonDrill(Process):
 
         return data
 
-    def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:
+    def process_data(self, data: xarray.Dataset, parameters: dict, dask_client) -> pandas.DataFrame:
         raise NotImplementedError
 
     def render_chart(self, df: pandas.DataFrame) -> altair.Chart:

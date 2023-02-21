@@ -6,8 +6,9 @@ from . import PolygonDrill, chart_dimensions, log_call
 class MangroveDrill(PolygonDrill):
 
     @log_call
-    def process_data(self, data, parameters):
-        data = data.compute()
+    def process_data(self, data, dask_client, parameters):
+        if dask_client:
+            data = data.compute()
 
         # TODO raise ProcessError('query returned no data') when appropriate
         woodland = data.where(data == 1).count(['x', 'y'])

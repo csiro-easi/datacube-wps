@@ -75,6 +75,9 @@ RUN chmod 777 /code/pywps.cfg \
     && chown wps:users /code/logs \
     && chown wps:users /code
 
+RUN chmod -R 777 /code/outputs \
+    && chown wps:users /code/outputs
+
 ENTRYPOINT ["wps-entrypoint.sh"]
 
 USER wps

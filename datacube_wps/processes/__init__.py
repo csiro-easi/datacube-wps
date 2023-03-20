@@ -6,6 +6,7 @@ from timeit import default_timer
 from collections import Counter
 
 import altair
+# import altair_saver
 import boto3
 import botocore
 import datacube
@@ -76,16 +77,33 @@ def log_call(func):
 
 @log_call
 def _uploadToS3(filename, data, mimetype):
-    session = boto3.Session()
-    bucket = config.get_config_value("s3", "bucket")
-    s3 = session.client("s3")
-    s3.upload_fileobj(
+    # AWS_S3_CREDS = {
+    #     "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+    #     "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
+    # }
+    session = boto3.Session(profile_name="default")
+    # bucket = config.get_config_value("s3", "bucket")
+    # s3 = session.client("s3", **AWS_S3_CREDS)
+    # s3 = session.client("s3")
+    # print('Made it to before the upload')
+    # s3.upload_fileobj(
+    #     data,
+    #     bucket,
+    #     filename,
+    #     ExtraArgs={"ACL": "public-read", "ContentType": mimetype},
+    # )
+
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket('test-wps')
+    print('Made it to before the upload')
+    bucket.upload_fileobj(
         data,
-        bucket,
         filename,
         ExtraArgs={"ACL": "public-read", "ContentType": mimetype},
     )
 
+    print('Made it to before the presigned url generation')
+    bucket = config.get_config_value("s3", "bucket")
     # Create unsigned s3 client for determining public s3 url
     s3 = session.client("s3", config=Config(signature_version=botocore.UNSIGNED))
     return s3.generate_presigned_url(
@@ -97,14 +115,14 @@ def _uploadToS3(filename, data, mimetype):
 
 def upload_chart_html_to_S3(chart: altair.Chart, process_id: str):
     html_io = io.StringIO()
-    chart.save(html_io, format="html")
+    chart.save(html_io, format="html", engine="vl-convert")
     html_bytes = io.BytesIO(html_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.html", html_bytes, "text/html")
 
 
 def upload_chart_svg_to_S3(chart: altair.Chart, process_id: str):
     img_io = io.StringIO()
-    chart.save(img_io, format="svg")
+    chart.save(img_io, format="svg", engine="vl-convert")
     img_bytes = io.BytesIO(img_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.svg", img_bytes, "image/svg+xml")
 
@@ -274,8 +292,8 @@ def _render_outputs(
     name="Timeseries",
     header=True,
 ):
-    # html_url = upload_chart_html_to_S3(chart, str(uuid))
-    # img_url = upload_chart_svg_to_S3(chart, str(uuid))
+    html_url = upload_chart_html_to_S3(chart, str(uuid))
+    img_url = upload_chart_svg_to_S3(chart, str(uuid))
 
     try:
         csv_df = df.drop(columns=["latitude", "longitude"])
@@ -300,15 +318,15 @@ def _render_outputs(
 
     output_json = json.dumps(output_dict, cls=DatetimeEncoder)
 
-    # outputs = {
-    #     "image": {"data": img_url},
-    #     "url": {"data": html_url},
-    #     "timeseries": {"data": output_json},
-    # }
-
     outputs = {
+        "image": {"data": img_url},
+        "url": {"data": html_url},
         "timeseries": {"data": output_json},
     }
+
+    # outputs = {
+    #     "timeseries": {"data": output_json},
+    # }
 
     return outputs
 

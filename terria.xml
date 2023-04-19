@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wps:Execute version="1.0.0" service="WPS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
+  <ows:Identifier>Mangrove Cover Drill</ows:Identifier>
+  <wps:DataInputs>
+    <wps:Input>
+      <ows:Identifier>geometry</ows:Identifier>
+      <wps:Data>
+        <wps:ComplexData>{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[153.10233061356445,-27.431831449299636],[153.13889954704578,-27.429398206388516],[153.13303950055138,-27.445514510407616],[153.09601464195921,-27.447945450281818],[153.10233061356445,-27.431831449299636]]]}}]}</wps:ComplexData>
+      </wps:Data>
+    </wps:Input>
+    <wps:Input>
+      <ows:Identifier>start</ows:Identifier>
+      <wps:Data>
+        <wps:ComplexData>{"type":"object","properties":{"timestamp":{"type":"string","format":"date-time","date-time":"2019-01-01T00:00"}}}</wps:ComplexData>
+      </wps:Data>
+    </wps:Input>
+    <wps:Input>
+      <ows:Identifier>end</ows:Identifier>
+      <wps:Data>
+        <wps:ComplexData>{"type":"object","properties":{"timestamp":{"type":"string","format":"date-time","date-time":"2019-01-08T00:00"}}}</wps:ComplexData>
+      </wps:Data>
+    </wps:Input>
+  </wps:DataInputs>
+  <wps:ResponseForm>
+    <wps:ResponseDocument storeExecuteResponse="true" status="true"/>
+  </wps:ResponseForm>
+</wps:Execute>

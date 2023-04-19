@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wps:Execute version="1.0.0" service="WPS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
+  <ows:Identifier>WIT</ows:Identifier>
+  <wps:DataInputs>
+    <wps:Input>
+      <ows:Identifier>geometry</ows:Identifier>
+      <wps:Data>
+        <wps:ComplexData>{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[153.12718663366613,-27.41301284279155],[153.15152394136803,-27.417148062155693],[153.14739863708778,-27.429621880843325],[153.12979508688306,-27.4300981063635],[153.12718663366613,-27.41301284279155]]]}}]}</wps:ComplexData>
+      </wps:Data>
+    </wps:Input>
+    <wps:Input>
+      <ows:Identifier>start</ows:Identifier>
+      <wps:Data>
+        <wps:ComplexData>{"type":"object","properties":{"timestamp":{"type":"string","format":"date-time","date-time":"2019-01-01T00:00"}}}</wps:ComplexData>
+      </wps:Data>
+    </wps:Input>
+    <wps:Input>
+      <ows:Identifier>end</ows:Identifier>
+      <wps:Data>
+        <wps:ComplexData>{"type":"object","properties":{"timestamp":{"type":"string","format":"date-time","date-time":"2019-01-07T00:00"}}}</wps:ComplexData>
+      </wps:Data>
+    </wps:Input>
+  </wps:DataInputs>
+  <wps:ResponseForm>
+    <wps:ResponseDocument storeExecuteResponse="true" status="true"/>
+  </wps:ResponseForm>
+</wps:Execute>

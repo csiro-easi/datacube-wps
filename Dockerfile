@@ -78,6 +78,21 @@ RUN chmod 777 /code/pywps.cfg \
 RUN chmod -R 777 /code/outputs \
     && chown wps:users /code/outputs
 
+# Debugging?
+# RUN chmod -R 777 /code/geckodriver.log \
+#     && chown wps:users /code/geckodriver.log
+
+# For AWS CLI
+# RUN apt-get install unzip
+# RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+# RUN unzip awscliv2.zip
+# RUN ./aws/install
+
+# For debugging
+# RUN apt-get install -y vim
+# RUN curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh" | bash
+
+
 ENTRYPOINT ["wps-entrypoint.sh"]
 
 USER wps

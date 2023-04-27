@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wps:ExecuteResponse xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsExecute_response.xsd" service="WPS" version="1.0.0" xml:lang="en-US" serviceInstance="http://localhost:8000?request=GetCapabilities&amp;amp;service=WPS" statusLocation="http://localhost:8000/outputs/752d98ba-b303-11ed-bbad-0242ac120003.xml">
+    <wps:Process wps:processVersion="0.2">
+        <ows:Identifier>Mangrove Cover Drill</ows:Identifier>
+        <ows:Title>Mangrove Cover</ows:Title>
+        <ows:Abstract>Performs Mangrove Polygon Drill</ows:Abstract>
+	</wps:Process>
+    <wps:Status creationTime="2023-02-22T22:51:36Z">
+        <wps:ProcessSucceeded>PyWPS Process Mangrove Cover finished</wps:ProcessSucceeded>
+	</wps:Status>
+	<wps:ProcessOutputs>
+		<wps:Output>
+            <ows:Identifier>timeseries</ows:Identifier>
+            <ows:Title>Timeseries Drill</ows:Title>
+            <ows:Abstract></ows:Abstract>
+			<wps:Data>
+                    <wps:ComplexData mimeType="application/vnd.terriajs.catalog-member+json" encoding="utf-8" schema="https://tools.ietf.org/html/rfc7159"><![CDATA[{"data": "time,Woodland,Open Forest,Closed Forest\n2020-07-01,0,9,38\n", "isEnabled": true, "type": "table", "name": "Mangrove Cover", "tableStyle": {"columns": {"Woodland": {"units": "#", "chartLineColor": "#9FFF4C", "active": true}, "Open Forest": {"units": "#", "chartLineColor": "#5ECC00", "active": true}, "Closed Forest": {"units": "#", "chartLineColor": "#3B7F00", "active": true}}}}]]></wps:ComplexData>
+			</wps:Data>
+		</wps:Output>
+	</wps:ProcessOutputs>
+</wps:ExecuteResponse>

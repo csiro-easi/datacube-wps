@@ -6,6 +6,7 @@ from timeit import default_timer
 from collections import Counter
 
 import altair
+# import altair_saver
 import boto3
 import botocore
 import datacube
@@ -76,9 +77,17 @@ def log_call(func):
 
 @log_call
 def _uploadToS3(filename, data, mimetype):
-    session = boto3.Session()
+    # AWS_S3_CREDS = {
+    #     "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+    #     "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
+    # }
+    # s3 = session.client("s3", **AWS_S3_CREDS)
+    session = boto3.Session(profile_name="default")
     bucket = config.get_config_value("s3", "bucket")
     s3 = session.client("s3")
+
+    # bucket = s3.Bucket('test-wps')
+
     s3.upload_fileobj(
         data,
         bucket,
@@ -86,6 +95,8 @@ def _uploadToS3(filename, data, mimetype):
         ExtraArgs={"ACL": "public-read", "ContentType": mimetype},
     )
 
+    print('Made it to before the presigned url generation')
+    bucket = config.get_config_value("s3", "bucket")
     # Create unsigned s3 client for determining public s3 url
     s3 = session.client("s3", config=Config(signature_version=botocore.UNSIGNED))
     return s3.generate_presigned_url(
@@ -97,14 +108,14 @@ def _uploadToS3(filename, data, mimetype):
 
 def upload_chart_html_to_S3(chart: altair.Chart, process_id: str):
     html_io = io.StringIO()
-    chart.save(html_io, format="html")
+    chart.save(html_io, format="html", engine="vl-convert")
     html_bytes = io.BytesIO(html_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.html", html_bytes, "text/html")
 
 
 def upload_chart_svg_to_S3(chart: altair.Chart, process_id: str):
     img_io = io.StringIO()
-    chart.save(img_io, format="svg")
+    chart.save(img_io, format="svg", engine="vl-convert")
     img_bytes = io.BytesIO(img_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.svg", img_bytes, "image/svg+xml")
 
@@ -269,13 +280,14 @@ def _render_outputs(
     uuid,
     style,
     df: pandas.DataFrame,
-    chart: altair.Chart,
+    chart,
     is_enabled=True,
     name="Timeseries",
     header=True,
 ):
-    # html_url = upload_chart_html_to_S3(chart, str(uuid))
-    # img_url = upload_chart_svg_to_S3(chart, str(uuid))
+    if chart:
+        html_url = upload_chart_html_to_S3(chart, str(uuid))
+        img_url = upload_chart_svg_to_S3(chart, str(uuid))
 
     try:
         csv_df = df.drop(columns=["latitude", "longitude"])
@@ -290,6 +302,15 @@ def _render_outputs(
     else:
         table_style = {}
 
+    # Terria v7 API
+    output_dict = {
+        "data": csv,
+        "isEnabled": is_enabled,
+        "type": "csv",
+        "name": name,
+        **table_style,
+    }
+
     output_dict = {
         "data": csv,
         "isEnabled": is_enabled,
@@ -300,21 +321,31 @@ def _render_outputs(
 
     output_json = json.dumps(output_dict, cls=DatetimeEncoder)
 
-    # outputs = {
-    #     "image": {"data": img_url},
-    #     "url": {"data": html_url},
-    #     "timeseries": {"data": output_json},
-    # }
+    if chart:
+        outputs = {
+            "image": {"data": img_url},
+            "url": {"data": html_url},
+            "timeseries": {"data": output_json},
+            # "output_format": {"data": "application/vnd.terriajs.catalog-member.json"},
+        }
 
-    outputs = {
-        "timeseries": {"data": output_json},
-    }
+    else:
+        outputs = {
+            "timeseries": {"data": output_json},
+            # "output_format": {"data": "application/vnd.terriajs.catalog-member.json"},
+        }
 
     return outputs
 
 
 def _populate_response(response, outputs):
+    print('before response is populated')
+    print(response.outputs)
+    print('------------')
     for ident, output_value in outputs.items():
+        print('TESTING')
+        print(ident)
+        print(output_value)
         if ident in response.outputs:
             if "data" in output_value:
                 response.outputs[ident].data = output_value["data"]
@@ -322,6 +353,8 @@ def _populate_response(response, outputs):
                 response.outputs[ident].output_format = output_value["output_format"]
             if "url" in output_value:
                 response.outputs[ident].url = output_value["url"]
+            if "timeseries" in output_value:
+                response.outputs[ident].timeseries = output_value["timeseries"]
 
 
 def num_workers():
@@ -379,8 +412,13 @@ class PixelDrill(Process):
         parameters = _get_parameters(request)
 
         result = self.query_handler(time, feature, parameters=parameters)
-
-        outputs = self.render_outputs(result["data"], result["chart"])
+        
+        if self.style['csv']:
+            outputs = self.render_outputs(result["data"], None)
+        
+        elif self.style['table']:
+            outputs = self.render_outputs(result["data"], result["chart"])
+        
         _populate_response(response, outputs)
         return response
 
@@ -529,7 +567,12 @@ class PolygonDrill(Process):
 
         result = self.query_handler(time, feature, parameters=parameters)
 
-        outputs = self.render_outputs(result["data"], result["chart"])
+        if self.style['csv']:
+            outputs = self.render_outputs(result["data"], None)
+        
+        elif self.style['table']:
+            outputs = self.render_outputs(result["data"], result["chart"])
+        
         _populate_response(response, outputs)
         return response
 
@@ -548,9 +591,17 @@ class PolygonDrill(Process):
             data = self.input_data(dc, time, feature)
 
         df = self.process_data(data, {"time": time, "feature": feature, **parameters})
-        chart = self.render_chart(df)
-
-        return {"data": df, "chart": chart}
+        
+        # If csv specified, return timeseries in csv form
+        if self.style['csv']:
+            return {"data": df}
+    
+        # If table style specified in config, return chart (static timeseries)
+        elif self.style['table'] is not None:
+            chart = self.render_chart(df)
+            return {"data": df, "chart": chart}
+        
+        
 
     def input_data(self, dc, time, feature):
         if time is None:
@@ -624,7 +675,7 @@ class PolygonDrill(Process):
     def render_outputs(
         self,
         df: pandas.DataFrame,
-        chart: altair.Chart,
+        chart=None,
         is_enabled=True,
         name="Timeseries",
         header=True,

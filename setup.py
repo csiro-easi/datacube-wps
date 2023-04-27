@@ -5,7 +5,7 @@ INSTALL_REQUIRES = [
     'gunicorn',
     'datacube',
     'altair',
-    'altair_saver',
+    # 'altair_saver',
     'python-dateutil',
     'sentry_sdk[flask]',
     'blinker',

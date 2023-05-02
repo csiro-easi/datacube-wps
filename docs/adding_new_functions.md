@@ -1,6 +1,6 @@
 # Specifying configuration
 To add a new function, you must first create a new configuration for it in ../datacube-wps-config.yaml. As a minimum, the following keys and structure are required:
-  
+```
   - process: str
 
     about:
@@ -24,6 +24,7 @@ To add a new function, you must first create a new configuration for it in ../da
                 str:
                     units: str
                     active: bool
+```
 
 The product and measurement specified in the input section must be valid i.e. indexed into your database. If using the default Postgres database, this can be done through the query ran by ../setup-db.sh.
 
@@ -46,6 +47,7 @@ and optionally:
  # Terria
  To integrate this function with Terria, you will need to add a dictionary to /terria/TerriaMap/wwwroot/init/simple.json. As a minimum, the following keys are required:
 
+```json
  {
     {
       "id": "name of function",
@@ -60,6 +62,7 @@ and optionally:
         "mywps"
     ]
  }
+```
 
  The identifier value must match the identifier specified in ../datacube-wps-config.yaml. Also note that your WPS address must be included in the allowed CORS domains for communication to work. 
  

@@ -1,4 +1,4 @@
-*Specifying configuration
+# Specifying configuration
 To add a new function, you must first create a new configuration for it in ../datacube-wps-config.yaml. As a minimum, the following keys and structure are required:
   
   - process: str
@@ -29,7 +29,7 @@ The product and measurement specified in the input section must be valid i.e. in
 
 Other optional keys can be used - refer to existing config in ../datacube-wps-config.yaml. Custom keys can also be inserted to be used in your function.
 
-*Process handling
+# Process handling
 The next step is to decide whether or not to leverage the base PixelDrill or PolygonDrill classes defined in ../datacube_wps/processes/__init__.py, or to create a custom class to handle inputs,queries, render outputs etc. differently. For most general applications, the base classes are sufficient to handle your function. Note that you will have to write new tests if creating a custom class.
 
 *Python code
@@ -43,7 +43,7 @@ and optionally:
 
  If you have chosen to use the base classes for process handling, the existing functions in ../processes can be used as a general guideline.
 
- *Terria
+ # Terria
  To integrate this function with Terria, you will need to add a dictionary to /terria/TerriaMap/wwwroot/init/simple.json. As a minimum, the following keys are required:
 
  {

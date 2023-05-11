@@ -109,5 +109,5 @@ class LSFCDrill(PolygonDrill):
         return chart
 
     def render_outputs(self, df, chart):
-        return super().render_outputs(df, chart, is_enabled=True, name="FC",
+        return super().render_outputs(df, chart, is_enabled=True, name="LSFC",
                                       header=self.LONG_NAMES)

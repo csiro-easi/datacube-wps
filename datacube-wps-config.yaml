@@ -107,6 +107,7 @@ processes:
        resolution: [30, -30]
        output_crs: EPSG:3577
    style:
+       csv: None
        table:
            columns:
                Bare Soil:

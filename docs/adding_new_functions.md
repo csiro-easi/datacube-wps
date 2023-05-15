@@ -1,4 +1,12 @@
-# Specifying configuration
+# Adding WPS functions
+
+There are three main steps for adding a new WPS function or process:
+
+ - [Add the process to the WPS configuration](#wps-configuration)
+ - [Add processing code to undertake the function](#process-handling)
+ - Optionally, [Add a Terria catalog item](#terria)
+
+# WPS configuration
 To add a new function, you must first create a new configuration for it in ../datacube-wps-config.yaml. As a minimum, the following keys and structure are required:
 ```
   - process: str

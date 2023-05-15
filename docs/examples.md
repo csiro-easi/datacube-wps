@@ -1,7 +1,24 @@
-# GetCapabilities request
-curl http://localhost:8000/?request=GetCapabilities&service=WPS
+# Usage examples
 
-# GetCapabilities response
+Example calls and responses for the three WPS request types.
+
+- [GetCapabilities](#getcapabilities)
+- [DescribeProcess](#describeprocess)
+- [Execute](#execute)
+- [Terria catalog](#terria-catalog)
+
+`localhost:8000` is used as the URL in these examples; replace with your server address as appropriate.
+
+## GetCapabilities
+
+Server information and list the available functions.
+
+Example request:
+```bash
+curl http://localhost:8000/?request=GetCapabilities&service=WPS
+```
+
+Expected response:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- PyWPS 4.5.2 -->
@@ -83,7 +100,7 @@ The WOfS product allows users to get a better understanding of where water is no
 This Pixel Drill will output the water observations for a point through time as graph.
 
 For service status information, see https://status.dea.ga.gov.au.
-</ows:Abstract>
+            </ows:Abstract>
         </wps:Process>
         <wps:Process wps:processVersion="0.3">
             <ows:Identifier>FractionalCoverDrill</ows:Identifier>
@@ -113,10 +130,16 @@ For service status information, see https://status.dea.ga.gov.au.
 ```
 
 
-# DescribeProcess request
-curl 'http://localhost:8000/?service=WPS&request=DescribeProcess&version=1.0.0&Identifier=Mangrove%20Cover%20Drill'
+## DescribeProcess
 
-# DescribeProcess response
+Parameters associated with the given function.
+
+Example request:
+```bash
+curl 'http://localhost:8000/?service=WPS&request=DescribeProcess&version=1.0.0&Identifier=Mangrove%20Cover%20Drill
+```
+
+Expected response:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- PyWPS 4.5.2 -->
@@ -211,7 +234,11 @@ curl 'http://localhost:8000/?service=WPS&request=DescribeProcess&version=1.0.0&I
 </wps:ProcessDescriptions>
 ```
 
-# Execute request
+## Execute
+
+Send parameters to a given function and wait for the result.
+
+Example request:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <wps:Execute version="1.0.0" service="WPS" xml:lang="en-US" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsDescribeProcess_response.xsd">
@@ -244,7 +271,7 @@ curl 'http://localhost:8000/?service=WPS&request=DescribeProcess&version=1.0.0&I
 </wps:Execute>
 ```
 
-# Execute response
+Expected response:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <wps:ExecuteResponse xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsExecute_response.xsd" service="WPS" version="1.0.0" xml:lang="en-US" serviceInstance="http://localhost:8000?request=GetCapabilities&amp;amp;service=WPS" statusLocation="http://localhost:8000/outputs/ae111cfe-e87a-11ed-a5c0-0242ac120003.xml">
@@ -269,7 +296,20 @@ curl 'http://localhost:8000/?service=WPS&request=DescribeProcess&version=1.0.0&I
 </wps:ExecuteResponse>
 ```
 
-# Terria wwwroot/init/simple.json configuration
+## Terria catalog
+
+Add Terria catalog items for the WPS functions.
+
+Notes:
+
+- `"storeSupported": true`
+   - A path to a downloadable file can be returned to Terria
+- `"statusSupported": true`
+   - Terria can poll the service for progress updates
+- `"forceConvertResultsToV8": true`
+   - Older v7 return data structures can be converted to the v8 data structure (see [example](https://github.com/TerriaJS/RaPPMap/issues/133#issuecomment-1498523637)).
+
+Typically added to `wwwroot/init/simple.json` (or similar):
 ```json
 {
   "homeCamera": {
@@ -279,50 +319,6 @@ curl 'http://localhost:8000/?service=WPS&request=DescribeProcess&version=1.0.0&I
     "west": 109
   },
   "catalog": [
-    {
-      "id": "ZIdekvc10z",
-      "type": "wms-group",
-      "name": "Test",
-      "url": "https://programs.communications.gov.au/geoserver/ows",
-      "members": [
-        {
-          "type": "wms",
-          "localId": "mybroadband%3AMyBroadband_ADSL_Availability",
-          "legends": [
-            {
-              "items": [
-                {
-                  "title": "A - Best",
-                  "color": "#6B0038"
-                },
-                {
-                  "title": "B",
-                  "color": "#F41911"
-                },
-                {
-                  "title": "C",
-                  "color": "#F67F00"
-                },
-                {
-                  "title": "D",
-                  "color": "#D78B6D"
-                },
-                {
-                  "title": "E - Worst",
-                  "color": "#ECD2BE"
-                },
-                {
-                  "title": "No data",
-                  "color": "rgba(0,0,0,0)",
-                  "outlineColor": "black",
-                  "addSpacingAbove": true
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
     {
       "id": "Mangrove Cover Drill",
       "type": "wps",

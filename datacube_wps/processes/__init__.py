@@ -281,6 +281,7 @@ def _render_outputs(
     style,
     df: pandas.DataFrame,
     chart,
+    json_version,
     is_enabled=True,
     name="Timeseries",
     header=True,
@@ -303,22 +304,49 @@ def _render_outputs(
         table_style = {}
 
     # Terria v7 API
-    output_dict = {
-        "data": csv,
-        "isEnabled": is_enabled,
-        "type": "csv",
-        "name": name,
-        **table_style,
-    }
+    if json_version == "v7":
+        output_dict = {
+            "data": csv,
+            "isEnabled": is_enabled,
+            "type": "csv",
+            "name": name,
+            **table_style,
+        }
+    # Terria v8 API
+    elif json_version == "v8":
+        columns = [column for column in style["table"]["columns"]]
+        units = [style["table"]["columns"][column]["units"] for column in columns]
+        colours = [style["table"]["columns"][column]["chartLineColor"] for column in columns]
 
-    output_dict = {
-        "data": csv,
-        "isEnabled": is_enabled,
-        "type": "csv",
-        "name": name,
-        **table_style,
-    }
-
+        output_dict = {
+            "type": "csv",
+            "name": name,
+            "data": csv, 
+            "csvString": csv,
+            "columns": [
+                {
+                    "name": column,
+                    "units": unit
+                } for column, unit in zip(columns,units)
+            ],
+            "defaultStyle": {
+                "hidden": False,
+                "chart": {
+                    "lines": [
+                        {
+                            "isSelectedInWorkbench": True,
+                            "yAxisColumn": column,
+                            "color": colour
+                        } for column, colour in zip(columns, colours)
+                    ]
+                }
+            }
+        }
+    
+    else:
+        raise ValueError("No Terria JSON version specified")
+    print("Hao testing...")
+    print(output_dict)
     output_json = json.dumps(output_dict, cls=DatetimeEncoder)
 
     if chart:
@@ -380,6 +408,7 @@ class PixelDrill(Process):
         self.about = about
         self.input = input
         self.style = style
+        self.json_version = "v8"
 
         self.dask_client = None
         # self.dask_client = dask_client = Client(
@@ -507,6 +536,7 @@ class PixelDrill(Process):
             self.style,
             df,
             chart,
+            json_version=self.json_version,
             is_enabled=is_enabled,
             name=name,
             header=header,
@@ -533,6 +563,7 @@ class PolygonDrill(Process):
         self.input = input
         self.style = style
         self.mask_all_touched = False
+        self.json_version = "v8"
 
         self.dask_client = None
         # self.dask_client = dask_client = Client(
@@ -692,6 +723,7 @@ class PolygonDrill(Process):
             self.style,
             df,
             chart,
+            json_version=self.json_version,
             is_enabled=is_enabled,
             name=name,
             header=header,

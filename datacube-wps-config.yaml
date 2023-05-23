@@ -101,7 +101,7 @@ processes:
        geometry_type: polygon
 
    input:
-       product: ga_ls_fc_3
+       product: ls_s2_fc_c3
        group_by: solar_day
        measurements: [bs, pv, npv]
        resolution: [30, -30]

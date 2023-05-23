@@ -17,9 +17,7 @@ class LSFCDrill(PolygonDrill):
                   'Unobservable']
 
     def output_formats(self):
-        return [LiteralOutput("image", "Landsat Fractional Cover Drill Preview"),
-                LiteralOutput("url", "Landsat Fractional Cover Drill Chart"),
-                ComplexOutput('timeseries', 'Landsat Fractional Cover Polygon Drill Timeseries',
+        return [ComplexOutput('timeseries', 'Landsat Fractional Cover Polygon Drill Timeseries',
                               supported_formats=[FORMATS['output_json']])]
 
     @log_call

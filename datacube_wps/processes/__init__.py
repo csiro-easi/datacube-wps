@@ -321,7 +321,6 @@ def _render_outputs(
         output_dict = {
             "type": "csv",
             "name": name,
-            "data": csv, 
             "csvString": csv,
             "columns": [
                 {

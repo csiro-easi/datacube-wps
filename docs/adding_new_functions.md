@@ -7,7 +7,16 @@ There are three main steps for adding a new WPS function or process:
  - Optionally, [Add a Terria catalog item](#terria)
 
 # WPS configuration
-To add a new function, you must first create a new configuration for it in ../datacube-wps-config.yaml. As a minimum, the following keys and structure are required:
+To add a new function, you must first create a new configuration for it in `datacube-wps-config.yaml`.
+
+This file is read into WPS Process objects via [ODC virtual product definitions](https://opendatacube.readthedocs.io/en/stable/data-access-analysis/advanced-topics/virtual-products.html).
+
+Notes:
+
+- The product and measurement specified in the input section must be valid (indexed in) your ODC database. The ODC database environment is configured by the standard ODC means (environment specific).
+- Other optional keys can be used. Refer to existing config in `datacube-wps-config.yaml` and the virtual products documentation. Custom keys can also be inserted to be used in your function.
+
+As a minimum, the following keys and structure are required:
 ```
   - process: str
 
@@ -34,15 +43,12 @@ To add a new function, you must first create a new configuration for it in ../da
                     active: bool
 ```
 
-The product and measurement specified in the input section must be valid i.e. indexed into your database. If using the default Postgres database, this can be done through the query ran by ../setup-db.sh.
-
-Other optional keys can be used - refer to existing config in ../datacube-wps-config.yaml. Custom keys can also be inserted to be used in your function.
 
 # Process handling
-The next step is to decide whether or not to leverage the base PixelDrill or PolygonDrill classes defined in ../datacube_wps/processes/__init__.py, or to create a custom class to handle inputs,queries, render outputs etc. differently. For most general applications, the base classes are sufficient to handle your function. Note that you will have to write new tests if creating a custom class.
+The next step is to decide whether or not to leverage the base `PixelDrill` or `PolygonDrill` classes defined in `datacube_wps/processes/__init__.py`. Or a custom base classes could be added to handle inputs, queries and render outputs differently. For most general applications, the base classes are sufficient to handle your function. Note that you will have to write new tests if creating a custom class.
 
 *Python code
-Now that your query/request handling and inputs and outputs are defined, the final step is to write the code for your function! This file should sit in ../processes. There are many ways to do this but in general, you want to create a class with functions to:
+Now that your query/request handling and inputs and outputs are defined, the next step is to write the code for your function. This file should sit in `processes/`. There are many ways to do this but in general, you want to create a class with functions to:
  - process data
  - render outputs
 

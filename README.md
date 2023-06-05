@@ -15,24 +15,6 @@ Available processes are below:
 * FCDrill
 * WOfSDrill
 
-### State of play (08/12/2022)
-- EASI WPS can currently run:
- - Mangrove polygon drill: Calculate number of Woodland, Open Forest and Closed Forest pixels in a polygon
- - Fractional Cover (FC) polygon drill: Calculate proportion of bare soil, photosynthetic vegetation and non-photosynthetic vegetation within a polygon.
- - Water Observations From Space (WOFS) pixel drill: Produce water observations for a point through time as a graph.
-- Want to be able to handle Geopolygon, Geomultipolygons and shapefiles (from which we extract polygons) - can currently handle polygons.
-
-- Some considerations when working with the raster data:
- - Statistics to be applied to the polygon (mean, std etc.)
- - Handling of partial pixels - what happens when a polygon straddles an edge or is partially outside of one (exclude? include? more than 50%? less than 50%?)
- - the kind of band math we can do (functions) e.g. fractional cover - bare, dry, veg; total cover, optionally combine with rainfall...
-
-- Next tasks:
- - Deploying in EASI
- - Connect input requests and output results to Terria
- - Test
-
-
 ## Flask Dev Server
 
 To run the WPS on localhost modify `pywps.cfg` to point `url` and `outputurl` to `localhost`. `workdir` and `outputpath` should be left as `tmp` and `outputs` respectively for a local dev server and `base_route` should be `/` see example:
@@ -95,60 +77,3 @@ This part is flow-on from Workflow testing
 1. Go to http://www.apirequest.io/
 2. URL = `request URL` from Collect payload point 6
 3. Request body = `xml` from Collect payload point 6
-
-## API
-### GetCapabilities
-- Returns configured operations and processes in XML format.
-- Currently, operations include **GetCapabilities**, **DescribeProcess** and **Execute**. Processes include **Fractional Cover Drill**, **Mangrove Cover Drill** and **WIT polygon drill**
-- Locally accessed via http://localhost:8000/?service=WPS&request=GetCapabilities&version=1.0.0
-
-### DescribeProcess
-- Returns a description of a configured process in XML format (accepted input formats, data types etc.)
-- Returned XML provides framework for input data to execute described process.
-- Locally accessed via http://localhost:8000/?service=WPS&version=1.0.0&request=DescribeProcess&identifier=PROCESS-IDENTIFIER
-
-### Execute
-- Runs a specified process.
-- Inputs depend on process configuration.
-- Request can be made as either a GET URL or a POST with an XML request document.
-- Sendings requests with XML request documents are preferred for tidiness.
-- POSTs can be constructed with assistance from Postman standalone app, Postman Chrome browser extension, Firefox Developer Tools or equivalent tools.
-- Example of a CURL call:
-
-curl -H "Content-Type: text/xml" -d @wpsrequest.xml -X POST localhost:8000?service=WPS&request=Execute
-
-- Example of a request XML for the implemented mangrove drill process.
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<wps:Execute version="1.0.0" service="WPS" xml:lang="en-US" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsDescribeProcess_response.xsd">
-  <ows:Identifier>Mangrove Cover Drill</ows:Identifier>
-  <wps:DataInputs>
-    <wps:Input>
-      <ows:Identifier>geometry</ows:Identifier>
-      <wps:Data>
-        <wps:ComplexData mimeType="application/vnd.geo+json"><![CDATA[{"features": [{"geometry": {"type": "Polygon", "coordinates": [[[153.1, -27.4], [153.3, -27.4], [153.3, -27.2], [153.1, -27.2], [153.1, -27.4]]]}, "crs": "EPSG:4326"}]}]]></wps:ComplexData>
-      </wps:Data>
-    </wps:Input>
-    <wps:Input>
-      <ows:Identifier>start</ows:Identifier>
-      <wps:Data>
-        <wps:ComplexData mimeType="application/vnd.geo+json"><![CDATA[{"properties": {"timestamp": {"date-time": "2019-01-01"}}}]]></wps:ComplexData>
-      </wps:Data>
-    </wps:Input>
-    <wps:Input>
-      <ows:Identifier>end</ows:Identifier>
-      <wps:Data>
-        <wps:ComplexData mimeType="application/vnd.geo+json"><![CDATA[{"properties": {"timestamp": {"date-time": "2019-03-01"}}}]]></wps:ComplexData>
-      </wps:Data>
-    </wps:Input>
-  </wps:DataInputs>
-  <wps:ResponseForm>
-    <wps:RawDataOutput mimeType="application/vnd.terriajs.catalog-member+json">
-      <ows:Identifier>timeseries</ows:Identifier>
-    </wps:RawDataOutput>
-  </wps:ResponseForm>
-</wps:Execute>
-```
-
-- See `./example_request.xml` for another example (process not implemented)

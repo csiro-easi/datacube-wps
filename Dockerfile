@@ -13,6 +13,8 @@ RUN python3 -m venv ${py_env_path} && \
 
 RUN ${py_env_path}/bin/python -m pip  install --no-cache-dir -r /conf/requirements.txt -c /conf/constraints.txt
 
+RUN ${py_env_path}/bin/python -m pip  install git+https://github.com/altair-viz/altair.git@master
+
 ENV PATH=${py_env_path}/bin:$PATH
 
 FROM csiroeasi/geobase-runner:master.latest
@@ -51,7 +53,7 @@ RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
   nodejs
 
-RUN npm install vega-lite vega-cli canvas
+RUN sudo npm install vega-lite vega-cli canvas -g
 
 COPY --from=env_builder /bin/tini /bin/tini
 ARG py_env_path

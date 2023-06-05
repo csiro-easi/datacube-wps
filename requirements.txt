@@ -4,7 +4,6 @@ pywps
 gunicorn[gevent]
 datacube
 altair
-altair_saver
 python-dateutil
 sentry_sdk[flask]
 blinker
@@ -18,3 +17,4 @@ moto
 vega-datasets
 twine
 pyarrow
+vl-convert-python

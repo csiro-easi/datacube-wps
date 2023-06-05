@@ -30,6 +30,7 @@ processes:
        fuse_func: datacube_wps.processes.wofls_fuser
 
    style:
+       csv: None
        table:
            columns:
                Wet:
@@ -106,6 +107,7 @@ processes:
        resolution: [30, -30]
 
    style:
+       csv: None
        table:
            columns:
                Woodland:
@@ -165,4 +167,5 @@ processes:
                    - product: ga_ls_wo_3
                      measurements: [water]
    style:
+       csv: None
        table: None

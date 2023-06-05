@@ -101,12 +101,13 @@ processes:
        geometry_type: polygon
 
    input:
-       product: ga_ls_fc_3
+       product: ls_s2_fc_c3
        group_by: solar_day
        measurements: [bs, pv, npv]
        resolution: [30, -30]
        output_crs: EPSG:3577
    style:
+       csv: None
        table:
            columns:
                Bare Soil:

@@ -344,8 +344,6 @@ def _render_outputs(
     
     else:
         raise ValueError("No Terria JSON version specified")
-    print("Hao testing...")
-    print(output_dict)
     output_json = json.dumps(output_dict, cls=DatetimeEncoder)
 
     if chart:
@@ -456,7 +454,7 @@ class PixelDrill(Process):
             parameters = {}
 
         configure_s3_access(
-            aws_unsigned=True,
+            # aws_unsigned=True,
             region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
             client=self.dask_client,
         )
@@ -612,7 +610,7 @@ class PolygonDrill(Process):
             parameters = {}
 
         configure_s3_access(
-            aws_unsigned=True,
+            # aws_unsigned=True,
             region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
             client=self.dask_client,
         )

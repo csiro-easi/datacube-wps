@@ -80,8 +80,9 @@ RUN chmod 777 /code/pywps.cfg \
 RUN chmod -R 777 /code/outputs \
     && chown wps:users /code/outputs
 
-RUN chmod -R 777 /code/geckodriver.log \
-    && chown wps:users /code/geckodriver.log
+# Debugging?
+# RUN chmod -R 777 /code/geckodriver.log \
+#     && chown wps:users /code/geckodriver.log
 
 # For AWS CLI
 # RUN apt-get install unzip

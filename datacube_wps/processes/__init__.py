@@ -382,7 +382,8 @@ def _populate_response(response, outputs):
                 response.outputs[ident].timeseries = output_value["timeseries"]
 
 
-def num_workers():
+def num_dask_workers():
+    """Number of dask workers"""
     return int(os.getenv("DATACUBE_WPS_NUM_WORKERS", "4"))
 
 
@@ -409,7 +410,7 @@ class PixelDrill(Process):
 
         self.dask_client = None
         # self.dask_client = dask_client = Client(
-        #     n_workers=num_workers(), processes=True, threads_per_worker=1
+        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
         # )
 
     def input_formats(self):
@@ -564,7 +565,7 @@ class PolygonDrill(Process):
 
         self.dask_client = None
         # self.dask_client = dask_client = Client(
-        #     n_workers=num_workers(), processes=True, threads_per_worker=1
+        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
         # )
 
     def input_formats(self):

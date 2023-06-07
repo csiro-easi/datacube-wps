@@ -18,7 +18,7 @@ import pywps.configuration as config
 import rasterio.features
 import xarray
 from botocore.client import Config
-from dask.distributed import Client
+from dask.distributed import Client, worker_client
 from datacube.utils.geometry import CRS, Geometry
 from datacube.utils.rio import configure_s3_access
 from datacube.virtual.impl import Product, Juxtapose
@@ -382,8 +382,7 @@ def _populate_response(response, outputs):
                 response.outputs[ident].timeseries = output_value["timeseries"]
 
 
-def num_dask_workers():
-    """Number of dask workers"""
+def num_workers():
     return int(os.getenv("DATACUBE_WPS_NUM_WORKERS", "4"))
 
 
@@ -408,10 +407,15 @@ class PixelDrill(Process):
         self.style = style
         self.json_version = "v8"
 
-        self.dask_client = None
         # self.dask_client = dask_client = Client(
         #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
         # )
+
+        self.dask_enabled = True
+        
+        if self.dask_enabled:
+            # get the Dask Client associated with the current Gunicorn worker
+            self.dask_client = worker_client()
 
     def input_formats(self):
         return [
@@ -489,7 +493,7 @@ class PixelDrill(Process):
         lonlat = feature.coords[0]
         measurements = self.input.output_measurements(bag.product_definitions)
 
-        if self.dask_client:
+        if self.dask_enabled:
             data = self.input.fetch(box, dask_chunks={"time": 1})
             data = data.compute()
         else:
@@ -563,10 +567,14 @@ class PolygonDrill(Process):
         self.mask_all_touched = False
         self.json_version = "v8"
 
-        self.dask_client = None
         # self.dask_client = dask_client = Client(
         #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
         # )
+        self.dask_enabled = True
+        
+        if self.dask_enabled:
+            # get the Dask Client associated with the current Gunicorn worker
+            self.dask_client = worker_client()
 
     def input_formats(self):
         return [
@@ -675,7 +683,7 @@ class PolygonDrill(Process):
             _guard_rail(self.input, box)
 
         # TODO customize the number of processes
-        if self.dask_client:
+        if self.dask_enabled:
             data = self.input.fetch(box, dask_chunks={"time": 1})
         else:
             data = self.input.fetch(box)

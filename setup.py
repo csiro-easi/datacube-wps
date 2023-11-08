@@ -8,7 +8,7 @@ INSTALL_REQUIRES = [
     # 'altair_saver',
     'python-dateutil',
     'sentry_sdk[flask]',
-    'blinker',
+    # 'blinker',
     'prometheus-flask-exporter',
     'pywps',
     'pyarrow'

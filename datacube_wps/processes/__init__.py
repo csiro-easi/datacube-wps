@@ -18,7 +18,7 @@ import pywps.configuration as config
 import rasterio.features
 import xarray
 from botocore.client import Config
-from dask.distributed import Client
+from dask.distributed import Client, worker_client
 from datacube.utils.geometry import CRS, Geometry
 from datacube.utils.rio import configure_s3_access
 from datacube.virtual.impl import Product, Juxtapose
@@ -281,6 +281,7 @@ def _render_outputs(
     style,
     df: pandas.DataFrame,
     chart,
+    json_version,
     is_enabled=True,
     name="Timeseries",
     header=True,
@@ -303,22 +304,46 @@ def _render_outputs(
         table_style = {}
 
     # Terria v7 API
-    output_dict = {
-        "data": csv,
-        "isEnabled": is_enabled,
-        "type": "csv",
-        "name": name,
-        **table_style,
-    }
+    if json_version == "v7":
+        output_dict = {
+            "data": csv,
+            "isEnabled": is_enabled,
+            "type": "csv",
+            "name": name,
+            **table_style,
+        }
+    # Terria v8 API
+    elif json_version == "v8":
+        columns = [column for column in style["table"]["columns"]]
+        units = [style["table"]["columns"][column]["units"] for column in columns]
+        colours = [style["table"]["columns"][column]["chartLineColor"] for column in columns]
 
-    output_dict = {
-        "data": csv,
-        "isEnabled": is_enabled,
-        "type": "csv",
-        "name": name,
-        **table_style,
-    }
-
+        output_dict = {
+            "type": "csv",
+            "name": name,
+            "csvString": csv,
+            "columns": [
+                {
+                    "name": column,
+                    "units": unit
+                } for column, unit in zip(columns,units)
+            ],
+            "defaultStyle": {
+                "hidden": False,
+                "chart": {
+                    "lines": [
+                        {
+                            "isSelectedInWorkbench": True,
+                            "yAxisColumn": column,
+                            "color": colour
+                        } for column, colour in zip(columns, colours)
+                    ]
+                }
+            }
+        }
+    
+    else:
+        raise ValueError("No Terria JSON version specified")
     output_json = json.dumps(output_dict, cls=DatetimeEncoder)
 
     if chart:
@@ -380,11 +405,17 @@ class PixelDrill(Process):
         self.about = about
         self.input = input
         self.style = style
+        self.json_version = "v8"
 
-        self.dask_client = None
         # self.dask_client = dask_client = Client(
-        #     n_workers=num_workers(), processes=True, threads_per_worker=1
+        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
         # )
+
+        self.dask_enabled = True
+        
+        if self.dask_enabled:
+            # get the Dask Client associated with the current Gunicorn worker
+            self.dask_client = worker_client()
 
     def input_formats(self):
         return [
@@ -428,7 +459,7 @@ class PixelDrill(Process):
             parameters = {}
 
         configure_s3_access(
-            aws_unsigned=True,
+            # aws_unsigned=True,
             region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
             client=self.dask_client,
         )
@@ -462,7 +493,7 @@ class PixelDrill(Process):
         lonlat = feature.coords[0]
         measurements = self.input.output_measurements(bag.product_definitions)
 
-        if self.dask_client:
+        if self.dask_enabled:
             data = self.input.fetch(box, dask_chunks={"time": 1})
             data = data.compute()
         else:
@@ -507,6 +538,7 @@ class PixelDrill(Process):
             self.style,
             df,
             chart,
+            json_version=self.json_version,
             is_enabled=is_enabled,
             name=name,
             header=header,
@@ -533,11 +565,16 @@ class PolygonDrill(Process):
         self.input = input
         self.style = style
         self.mask_all_touched = False
+        self.json_version = "v8"
 
-        self.dask_client = None
         # self.dask_client = dask_client = Client(
-        #     n_workers=num_workers(), processes=True, threads_per_worker=1
+        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
         # )
+        self.dask_enabled = True
+        
+        if self.dask_enabled:
+            # get the Dask Client associated with the current Gunicorn worker
+            self.dask_client = worker_client()
 
     def input_formats(self):
         return [
@@ -582,7 +619,7 @@ class PolygonDrill(Process):
             parameters = {}
 
         configure_s3_access(
-            aws_unsigned=True,
+            # aws_unsigned=True,
             region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
             client=self.dask_client,
         )
@@ -646,7 +683,7 @@ class PolygonDrill(Process):
             _guard_rail(self.input, box)
 
         # TODO customize the number of processes
-        if self.dask_client:
+        if self.dask_enabled:
             data = self.input.fetch(box, dask_chunks={"time": 1})
         else:
             data = self.input.fetch(box)
@@ -692,6 +729,7 @@ class PolygonDrill(Process):
             self.style,
             df,
             chart,
+            json_version=self.json_version,
             is_enabled=is_enabled,
             name=name,
             header=header,

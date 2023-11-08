@@ -89,6 +89,45 @@ processes:
                    chartLineColor: "grey"
                    active: False
 
+ - process: datacube_wps.processes.lsfcdrill.LSFCDrill
+
+   about:
+       identifier: LSFractionalCoverDrill
+       version: '0.3'
+       title: Landsat Sentinel 2 Fractional Cover
+       abstract: Performs Landsat Sentinel 2 Fractional Cover Polygon Drill
+       store_supported: True
+       status_supported: True
+       geometry_type: polygon
+
+   input:
+       product: ls_s2_fc_c3
+       group_by: solar_day
+       measurements: [bs, pv, npv]
+       resolution: [30, -30]
+       output_crs: EPSG:3577
+   style:
+       csv: None
+       table:
+           columns:
+               Bare Soil:
+                   units: "%"
+                   chartLineColor: "#8B0000"
+                   active: True
+               Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "green"
+                   active: True
+               Non-Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "#dac586"
+                   active: True
+               Unobservable:
+                   units: "%"
+                   # this was nice too: chartLineColor: "#6699CC"
+                   chartLineColor: "grey"
+                   active: False
+
 
  - process: datacube_wps.processes.mangrovedrill.MangroveDrill
 

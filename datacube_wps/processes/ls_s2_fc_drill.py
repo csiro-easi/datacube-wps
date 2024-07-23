@@ -19,18 +19,25 @@ class LS_S2_FC_Drill(PolygonDrill):
     @log_call
     def process_data(self, data, parameters): # returns pandas.DataFrame
 
-        new_da = data['tc'].mean(dim=['x','y'], skipna=True).compute()
+        NO_DATA = 255
 
-        df = new_da.to_dataframe()
+        mask_da = data['tc'] != NO_DATA
+
+        masked_da = data['tc'].where(mask_da)
+
+        mean_da = masked_da.mean(dim=['x','y'], skipna=True).compute()
+
+        df = mean_da.to_dataframe()
         df = df.drop('spatial_ref', axis=1)
         df.reset_index(inplace=True)
+
         return df
 
     def render_chart(self, df):
         pass
 
     def render_outputs(self, df, chart):
-        
+
         name = 'tc'
 
         try:

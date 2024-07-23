@@ -97,14 +97,14 @@ def _uploadToS3(filename, data, mimetype):
 
 def upload_chart_html_to_S3(chart: altair.Chart, process_id: str):
     html_io = io.StringIO()
-    chart.save(html_io, format="html", engine="vl-convert")
+    chart.save(html_io, format="html")#, engine="vl-convert")
     html_bytes = io.BytesIO(html_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.html", html_bytes, "text/html")
 
 
 def upload_chart_svg_to_S3(chart: altair.Chart, process_id: str):
     img_io = io.StringIO()
-    chart.save(img_io, format="svg", engine="vl-convert")
+    chart.save(img_io, format="svg")#, engine="vl-convert")
     img_bytes = io.BytesIO(img_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.svg", img_bytes, "image/svg+xml")
 
@@ -414,13 +414,13 @@ class PixelDrill(Process):
         parameters = _get_parameters(request)
 
         result = self.query_handler(time, feature, parameters=parameters)
-        
-        if self.style['csv']:
+
+        if 'csv' in self.style:
             outputs = self.render_outputs(result["data"], None)
-        
-        elif self.style['table']:
+        elif 'table' in self.style:
             outputs = self.render_outputs(result["data"], result["chart"])
-        
+        raise ProcessError('No output style configured for process!')
+
         _populate_response(response, outputs)
         return response
 
@@ -569,12 +569,13 @@ class PolygonDrill(Process):
 
         result = self.query_handler(time, feature, parameters=parameters)
 
-        if self.style['csv']:
+        if 'csv' in self.style:
             outputs = self.render_outputs(result["data"], None)
-        
-        elif self.style['table']:
+        elif 'table' in self.style:
             outputs = self.render_outputs(result["data"], result["chart"])
-        
+        else:
+            raise ProcessError('No output style configured for process!')
+
         _populate_response(response, outputs)
         return response
 
@@ -601,13 +602,14 @@ class PolygonDrill(Process):
         df = self.process_data(data, {"time": time, "feature": feature, **parameters})
 
         # If csv specified, return timeseries in csv form
-        if self.style['csv']:
+        if 'csv' in self.style:
             return {"data": df}
-
         # If table style specified in config, return chart (static timeseries)
-        elif self.style['table'] is not None:
+        elif 'table' in self.style:
             chart = self.render_chart(df)
             return {"data": df, "chart": chart}
+        else:
+            return {}
 
     def input_data(self, dc, time, feature):
         if time is None:

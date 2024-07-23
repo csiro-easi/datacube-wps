@@ -1,9 +1,10 @@
 import altair
+from math import ceil
 import numpy as np
 import xarray as xr
 from pywps import ComplexOutput, LiteralOutput
 
-from . import FORMATS, PolygonDrill, chart_dimensions, log_call, DatetimeEncoder
+from . import FORMATS, PolygonDrill, chart_dimensions, log_call
 
 
 class LS_S2_FC_Drill(PolygonDrill):
@@ -12,8 +13,9 @@ class LS_S2_FC_Drill(PolygonDrill):
 
     def output_formats(self):
         return [
-                ComplexOutput('timeseries', 'Fractional Cover Polygon Drill Timeseries',
-                              supported_formats=[FORMATS['output_json']])
+                #LiteralOutput('image', 'Fractional Cover Polygon Drill Preview'),
+                #LiteralOutput('url', 'Fractional Cover Polygon Drill Graph'),
+                ComplexOutput('timeseries', 'Fractional Cover Polygon Drill Timeseries', supported_formats=[FORMATS['output_json']])
         ]
 
     @log_call
@@ -34,43 +36,34 @@ class LS_S2_FC_Drill(PolygonDrill):
         return df
 
     def render_chart(self, df):
-        pass
+
+        MONTHS_IN_YEAR = 12
+        QUARTERS_IN_YEAR = 4
+
+        width, height = chart_dimensions(self.style)
+
+        chart = altair.Chart(df,
+                             width=width,
+                             height=height,
+                             title='Mean Percentage of Total Cover')
+
+        chart = chart.mark_line()
+
+        n_time_ticks = ceil(df.shape[0] / MONTHS_IN_YEAR) * QUARTERS_IN_YEAR
+
+        try:
+            line_colour = self.style['table']['columns']['Total Cover %']['chartLineColor']
+        except KeyError:
+            line_colour = '#3B7F00'
+
+        chart = chart.encode(
+            x=altair.X('time:T', axis=altair.Axis(title='Time', format='%b %Y', tickCount=n_time_ticks)),
+            y=altair.Y('tc:Q', axis=altair.Axis(title='Mean TC%')),
+            color=altair.ColorValue(line_colour)
+        )
+
+        return chart
 
     def render_outputs(self, df, chart):
 
-        name = 'tc'
-
-        try:
-            csv_df = df.drop(columns=["latitude", "longitude"])
-        except KeyError:
-            csv_df = df
-
-        csv_df.set_index("time", inplace=True)
-        csv = csv_df.to_csv(header=self.LONG_NAMES, date_format="%Y-%m-%d")
-
-        #if "table" in style:
-        #    table_style = {"tableStyle": style["table"]}
-        #else:
-        table_style = {}
-
-        output_dict = {
-            "data": csv,
-            "isEnabled": True,
-            "type": "csv",
-            "name": name,
-            **table_style,
-        }
-
-        import json
-        output_json = json.dumps(output_dict, cls=DatetimeEncoder)
-
-        outputs = {
-            #"image": {"data": img_url},
-            #"url": {"data": html_url},
-            "timeseries": {"data": output_json},
-        }
-
-        return outputs
-        #pass
-        #return super().render_outputs(df, chart, is_enabled=True, name="tc",
-                                      #header=self.LONG_NAMES)
+        return super().render_outputs(df, chart, is_enabled=True, name='tc', header=self.LONG_NAMES)

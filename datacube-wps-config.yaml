@@ -30,7 +30,6 @@ processes:
        fuse_func: datacube_wps.processes.wofls_fuser
 
    style:
-       csv: None
        table:
            columns:
                Wet:
@@ -107,7 +106,6 @@ processes:
        resolution: [30, -30]
        output_crs: EPSG:3577
    style:
-       csv: None
        table:
            columns:
                Bare Soil:
@@ -146,7 +144,6 @@ processes:
        resolution: [30, -30]
 
    style:
-       csv: None
        table:
            columns:
                Woodland:
@@ -206,8 +203,6 @@ processes:
                    - product: ga_ls_wo_3
                      measurements: [water]
    style:
-       csv: None
-       table: None
 
 
  - process: datacube_wps.processes.ls_s2_fc_drill.LS_S2_FC_Drill
@@ -217,7 +212,7 @@ processes:
        version: '0.1'
        title: Landsat/Sentinel-2 Fractional Cover Drill
        abstract: Performs Landsat/Sentinel-2 Fractional Cover Drill
-       store_supported: True
+       store_supported: False
        status_supported: True
        geometry_type: polygon
 
@@ -231,5 +226,10 @@ processes:
            measurements: [tc]
 
    style:
-       csv: None
-       table: None
+       csv: True
+       table:
+           columns:
+               Total Cover %:
+                   units: "#"
+                   chartLineColor: "#3B7F00"
+                   active: True

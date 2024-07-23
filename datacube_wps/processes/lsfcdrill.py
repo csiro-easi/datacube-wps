@@ -69,12 +69,7 @@ class LSFCDrill(PolygonDrill):
             'Unobservable': (not_pixels / total_valid)['bs'] * 100
         })
 
-        if self.dask_client:
-            print('dask compute')
-            dask_time = default_timer()
-            new_ds = new_ds.compute()
-            print('dask took', default_timer() - dask_time, 'seconds')
-            print(new_ds)
+        new_ds = new_ds.compute()
 
         df = new_ds.to_dataframe()
         df = df.drop('spatial_ref', axis=1)

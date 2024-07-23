@@ -6,7 +6,6 @@ from timeit import default_timer
 from collections import Counter
 
 import altair
-# import altair_saver
 import boto3
 import botocore
 import datacube
@@ -18,7 +17,7 @@ import pywps.configuration as config
 import rasterio.features
 import xarray
 from botocore.client import Config
-from dask.distributed import Client, worker_client
+from dask.distributed import Client
 from datacube.utils.geometry import CRS, Geometry
 from datacube.utils.rio import configure_s3_access
 from datacube.virtual.impl import Product, Juxtapose
@@ -77,17 +76,9 @@ def log_call(func):
 
 @log_call
 def _uploadToS3(filename, data, mimetype):
-    # AWS_S3_CREDS = {
-    #     "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
-    #     "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
-    # }
-    # s3 = session.client("s3", **AWS_S3_CREDS)
     session = boto3.Session(profile_name="default")
     bucket = config.get_config_value("s3", "bucket")
     s3 = session.client("s3")
-
-    # bucket = s3.Bucket('test-wps')
-
     s3.upload_fileobj(
         data,
         bucket,
@@ -95,8 +86,6 @@ def _uploadToS3(filename, data, mimetype):
         ExtraArgs={"ACL": "public-read", "ContentType": mimetype},
     )
 
-    print('Made it to before the presigned url generation')
-    bucket = config.get_config_value("s3", "bucket")
     # Create unsigned s3 client for determining public s3 url
     s3 = session.client("s3", config=Config(signature_version=botocore.UNSIGNED))
     return s3.generate_presigned_url(
@@ -193,7 +182,6 @@ def _guard_rail(input, box):
         byte_count *= x
     byte_count *= sum(np.dtype(m.dtype).itemsize for m in measurement_dicts.values())
 
-    print("byte count for query: ", byte_count)
     if byte_count > MAX_BYTES_IN_GB * GB:
         raise ProcessError(
             ("requested area requires {}GB data to load - " "maximum is {}GB").format(
@@ -203,7 +191,6 @@ def _guard_rail(input, box):
 
     grouped = box.box
 
-    print("grouped shape", grouped.shape)
     assert len(grouped.shape) == 1
 
     if grouped.shape[0] == 0:
@@ -364,13 +351,7 @@ def _render_outputs(
 
 
 def _populate_response(response, outputs):
-    print('before response is populated')
-    print(response.outputs)
-    print('------------')
     for ident, output_value in outputs.items():
-        print('TESTING')
-        print(ident)
-        print(output_value)
         if ident in response.outputs:
             if "data" in output_value:
                 response.outputs[ident].data = output_value["data"]
@@ -406,16 +387,6 @@ class PixelDrill(Process):
         self.input = input
         self.style = style
         self.json_version = "v8"
-
-        # self.dask_client = dask_client = Client(
-        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
-        # )
-
-        self.dask_enabled = True
-        
-        if self.dask_enabled:
-            # get the Dask Client associated with the current Gunicorn worker
-            self.dask_client = worker_client()
 
     def input_formats(self):
         return [
@@ -454,18 +425,24 @@ class PixelDrill(Process):
         return response
 
     @log_call
-    def query_handler(self, time, feature, parameters=None):
+    def query_handler(self, time, feature, dask_client=None, parameters=None):
         if parameters is None:
             parameters = {}
 
-        configure_s3_access(
-            # aws_unsigned=True,
-            region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
-            client=self.dask_client,
-        )
+        if dask_client is None:
+            dask_client = Client(
+                n_workers=1, processes=False, threads_per_worker=num_workers()
+            )
 
-        with datacube.Datacube() as dc:
-            data = self.input_data(dc, time, feature)
+        with dask_client:
+            configure_s3_access(
+                aws_unsigned=True,
+                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
+                client=dask_client,
+            )
+
+            with datacube.Datacube() as dc:
+                data = self.input_data(dc, time, feature)
 
         df = self.process_data(data, {"time": time, "feature": feature, **parameters})
         chart = self.render_chart(df)
@@ -493,11 +470,8 @@ class PixelDrill(Process):
         lonlat = feature.coords[0]
         measurements = self.input.output_measurements(bag.product_definitions)
 
-        if self.dask_enabled:
-            data = self.input.fetch(box, dask_chunks={"time": 1})
-            data = data.compute()
-        else:
-            data = self.input.fetch(box)
+        data = self.input.fetch(box, dask_chunks={"time": 1})
+        data = data.compute()
 
         coords = {
             "longitude": np.array([lonlat[0]]),
@@ -567,15 +541,6 @@ class PolygonDrill(Process):
         self.mask_all_touched = False
         self.json_version = "v8"
 
-        # self.dask_client = dask_client = Client(
-        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
-        # )
-        self.dask_enabled = True
-        
-        if self.dask_enabled:
-            # get the Dask Client associated with the current Gunicorn worker
-            self.dask_client = worker_client()
-
     def input_formats(self):
         return [
             ComplexInput(
@@ -614,80 +579,76 @@ class PolygonDrill(Process):
         return response
 
     @log_call
-    def query_handler(self, time, feature, parameters=None):
+    def query_handler(self, time, feature, dask_client=None, parameters=None):
         if parameters is None:
             parameters = {}
 
-        configure_s3_access(
-            # aws_unsigned=True,
-            region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
-            client=self.dask_client,
-        )
+        if dask_client is None:
+            dask_client = Client(
+                n_workers=num_workers(), processes=True, threads_per_worker=1
+            )
 
-        with datacube.Datacube() as dc:
-            data = self.input_data(dc, time, feature)
+        with dask_client:
+            configure_s3_access(
+                aws_unsigned=True,
+                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
+                client=dask_client,
+            )
+
+            with datacube.Datacube() as dc:
+                data = self.input_data(dc, time, feature)
 
         df = self.process_data(data, {"time": time, "feature": feature, **parameters})
-        
+
         # If csv specified, return timeseries in csv form
         if self.style['csv']:
             return {"data": df}
-    
+
         # If table style specified in config, return chart (static timeseries)
         elif self.style['table'] is not None:
             chart = self.render_chart(df)
             return {"data": df, "chart": chart}
-        
-        
 
     def input_data(self, dc, time, feature):
         if time is None:
             bag = self.input.query(dc, geopolygon=feature)
         else:
             bag = self.input.query(dc, time=time, geopolygon=feature)
-        
+
         output_crs = self.input.get('output_crs')
         resolution = self.input.get('resolution')
         align = self.input.get('align')
 
         if not (output_crs and resolution):
-            print('parameters for Geobox not found in inputs')
             if type(self.input) in (Product,):
-                print('Checking grid_spec in product')
-                if bag.product_definitions[self.input._product].grid_spec:
-                    print('grid_spec exists - do nothing')
-                else:
+                if not bag.product_definitions[self.input._product].grid_spec:
                     output_crs = mostcommon_crs(list(bag.bag))
-
             elif type(self.input) in (Juxtapose,):
-                print('Checking grid_spec of each product')
-                print(list(bag.product_definitions.values()))
-
                 grid_specs = [product_definition.grid_spec for product_definition in list(bag.product_definitions.values()) if getattr(product_definition, 'grid_spec', None)]
-                if len(set(grid_specs)) == 1:
-                    print('grid_spec exists for all products and are all the same - do nothing')
-
-                elif len(set(grid_specs)) > 1:
+                if len(set(grid_specs)) > 1:
                     raise ValueError('Multiple grid_spec detected across all products - override target output_crs, resolution in config')
-                
                 else:
                     if not resolution:
                         raise ValueError('add target resolution to config')
-
                     elif not output_crs:
                         output_crs = mostcommon_crs(bag.contained_datasets())                    
 
         box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
 
         if self.about.get("guard_rail", True):
+            # HACK: Get around issue where VirtualDatasetBox has a geobox but thinks it doesn't because load_natively flag is True.
+            # Need load_natively to be False to be able to call box.shape() inside guard_rail check function.
+            # Don't have time to understand how VirtualDatasets work and why this is happening in any more detail - just need the drill to work :)
+            run_hack = box.load_natively and box.geobox is not None
+            if run_hack:
+                load_natively = box.load_natively
+                box.load_natively = False
             _guard_rail(self.input, box)
+            if run_hack:
+                box.load_natively = load_natively
 
         # TODO customize the number of processes
-        if self.dask_enabled:
-            data = self.input.fetch(box, dask_chunks={"time": 1})
-        else:
-            data = self.input.fetch(box)
-
+        data = self.input.fetch(box, dask_chunks={"time": 1})
         mask = geometry_mask(
             feature, data.geobox, all_touched=self.mask_all_touched, invert=True
         )

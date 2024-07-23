@@ -208,3 +208,28 @@ processes:
    style:
        csv: None
        table: None
+
+
+ - process: datacube_wps.processes.ls_s2_fc_drill.LS_S2_FC_Drill
+
+   about:
+       identifier: LS S2 FC Drill
+       version: '0.1'
+       title: Landsat/Sentinel-2 Fractional Cover Drill
+       abstract: Performs Landsat/Sentinel-2 Fractional Cover Drill
+       store_supported: True
+       status_supported: True
+       geometry_type: polygon
+
+   input:
+       reproject:
+           output_crs: EPSG:3577
+           resolution: [-30, 30]
+       resampling: nearest
+       input:
+           product: ls_s2_fc_c3
+           measurements: [tc]
+
+   style:
+       csv: None
+       table: None

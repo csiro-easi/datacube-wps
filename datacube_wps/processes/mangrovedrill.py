@@ -7,8 +7,7 @@ class MangroveDrill(PolygonDrill):
 
     @log_call
     def process_data(self, data, parameters):
-        if self.dask_client:
-            data = data.compute()
+        data = data.compute()
 
         # TODO raise ProcessError('query returned no data') when appropriate
         woodland = data.where(data == 1).count(['x', 'y'])

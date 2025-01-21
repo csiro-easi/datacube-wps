@@ -205,6 +205,64 @@ processes:
    style:
 
 
+ - process: datacube_wps.processes.ls_s2_fc_tc_drill.LS_S2_FC_TC_Drill
+
+   about:
+       identifier: LS S2 FC TC Drill
+       version: '0.1'
+       title: Landsat/Sentinel-2 Fractional Cover (Total Cover) Drill
+       abstract: Performs Landsat/Sentinel-2 Fractional Cover (Total Cover) Drill
+       store_supported: False
+       status_supported: True
+       geometry_type: polygon
+
+   input:
+       reproject:
+           output_crs: EPSG:3577
+           resolution: [-30, 30]
+           resampling: nearest
+       input:
+           product: ls_s2_fc_c3
+           measurements: [tc]
+
+   style:
+       csv: True
+       table:
+           columns:
+               Total Cover %:
+                   units: "#"
+                   chartLineColor: "#3B7F00"
+                   active: True
+
+ - process: datacube_wps.processes.ls_s2_fc_tc_drill.LS_S2_FC_TC_Point_Drill
+
+   about:
+       identifier: LS S2 FC TC Point Drill
+       version: '0.1'
+       title: Landsat/Sentinel-2 Fractional Cover (Total Cover) Point Drill
+       abstract: Performs Landsat/Sentinel-2 Fractional Cover (Total Cover) Point Drill
+       store_supported: False
+       status_supported: True
+       geometry_type: point
+
+   input:
+       reproject:
+           output_crs: EPSG:3577
+           resolution: [-30,30]
+           resampling: nearest
+       input:
+           product: ls_s2_fc_c3
+           measurements: [tc]
+
+   style:
+       csv: True
+       table:
+           columns:
+               Total Cover %:
+                   units: '#'
+                   chartLineColor: "#3B7F00"
+                   active: True
+
  - process: datacube_wps.processes.ls_s2_fc_drill.LS_S2_FC_Drill
 
    about:
@@ -220,16 +278,69 @@ processes:
        reproject:
            output_crs: EPSG:3577
            resolution: [-30, 30]
-       resampling: nearest
+           resampling: nearest
        input:
            product: ls_s2_fc_c3
-           measurements: [tc]
+           measurements: [bs, pv, npv]
 
    style:
        csv: True
        table:
            columns:
-               Total Cover %:
-                   units: "#"
-                   chartLineColor: "#3B7F00"
+               Bare Soil:
+                   units: "%"
+                   chartLineColor: "#8B0000"
                    active: True
+               Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "green"
+                   active: True
+               Non-Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "#dac586"
+                   active: True
+               Unobservable:
+                   units: "%"
+                   chartLineColor: "grey"
+                   active: False
+
+ - process: datacube_wps.processes.ls_s2_fc_drill.LS_S2_FC_Point_Drill
+
+   about:
+       identifier: LS S2 FC Point Drill
+       version: '0.1'
+       title: Landsat/Sentinel-2 Fractional Cover Point Drill
+       abstract: Performs Landsat/Sentinel-2 Fractional Cover Point Drill
+       store_supported: False
+       status_supported: True
+       geometry_type: point
+
+   input:
+       reproject:
+           output_crs: EPSG:3577
+           resolution: [-30,30]
+           resampling: nearest
+       input:
+           product: ls_s2_fc_c3
+           measurements: [bs, pv, npv]
+
+   style:
+       csv: True
+       table:
+           columns:
+               Bare Soil:
+                   units: "%"
+                   chartLineColor: "#8B0000"
+                   active: True
+               Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "green"
+                   active: True
+               Non-Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "#dac586"
+                   active: True
+               Unobservable:
+                   units: "%"
+                   chartLineColor: "grey"
+                   active: False

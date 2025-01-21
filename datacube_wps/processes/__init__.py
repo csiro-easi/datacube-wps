@@ -419,7 +419,8 @@ class PixelDrill(Process):
             outputs = self.render_outputs(result["data"], None)
         elif 'table' in self.style:
             outputs = self.render_outputs(result["data"], result["chart"])
-        raise ProcessError('No output style configured for process!')
+        else:
+            raise ProcessError('No output style configured for process!')
 
         _populate_response(response, outputs)
         return response
@@ -445,9 +446,16 @@ class PixelDrill(Process):
                 data = self.input_data(dc, time, feature)
 
         df = self.process_data(data, {"time": time, "feature": feature, **parameters})
-        chart = self.render_chart(df)
 
-        return {"data": df, "chart": chart}
+        # If csv specified, return timeseries in csv form
+        if 'csv' in self.style:
+            return {"data": df}
+        # If table style specified in config, return chart (static timeseries)
+        elif 'table' in self.style:
+            chart = self.render_chart(df)
+            return {"data": df, "chart": chart}
+        else:
+            return {}
 
     @log_call
     def input_data(self, dc, time, feature):
@@ -456,16 +464,39 @@ class PixelDrill(Process):
         else:
             bag = self.input.query(dc, time=time, geopolygon=feature)
 
+        # X: Try using this code from polygon drill input_data func instead
+        output_crs = self.input.get('output_crs')
+        resolution = self.input.get('resolution')
+        align = self.input.get('align')
+
+        if not (output_crs and resolution):
+            if type(self.input) in (Product,):
+                if not bag.product_definitions[self.input._product].grid_spec:
+                    output_crs = mostcommon_crs(list(bag.bag))
+            elif type(self.input) in (Juxtapose,):
+                grid_specs = [product_definition.grid_spec for product_definition in list(bag.product_definitions.values()) if getattr(product_definition, 'grid_spec', None)]
+                if len(set(grid_specs)) > 1:
+                    raise ValueError('Multiple grid_spec detected across all products - override target output_crs, resolution in config')
+                else:
+                    if not resolution:
+                        raise ValueError('add target resolution to config')
+                    elif not output_crs:
+                        output_crs = mostcommon_crs(bag.contained_datasets())                    
+
+        box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
+
+        # X: Instead of this...
+        
         # Get output_crs/resolution/align params if product grid_spec is not defined
-        if bag.product_definitions[self.input._product].grid_spec is None:
-            output_crs = self.input.get('output_crs')
-            resolution = self.input.get('resolution')
-            align = self.input.get('align')
-            if output_crs is None:
-                output_crs = mostcommon_crs(list(bag.bag))
-            box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
-        else:
-            box = self.input.group(bag)
+        #if bag.product_definitions[self.input._product].grid_spec is None:
+        #    output_crs = self.input.get('output_crs')
+        #    resolution = self.input.get('resolution')
+        #    align = self.input.get('align')
+        #    if output_crs is None:
+        #        output_crs = mostcommon_crs(list(bag.bag))
+        #    box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
+        #else:
+        #    box = self.input.group(bag)
 
         lonlat = feature.coords[0]
         measurements = self.input.output_measurements(bag.product_definitions)
@@ -563,6 +594,7 @@ class PolygonDrill(Process):
         ]
 
     def request_handler(self, request, response):
+
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)
@@ -616,7 +648,6 @@ class PolygonDrill(Process):
             bag = self.input.query(dc, geopolygon=feature)
         else:
             bag = self.input.query(dc, time=time, geopolygon=feature)
-
         output_crs = self.input.get('output_crs')
         resolution = self.input.get('resolution')
         align = self.input.get('align')
@@ -655,6 +686,11 @@ class PolygonDrill(Process):
             feature, data.geobox, all_touched=self.mask_all_touched, invert=True
         )
 
+        data = self.mask_polygon(data, mask)
+
+        return data
+
+    def mask_polygon(self, data: xarray.Dataset, mask) -> xarray.Dataset:
         # mask out data outside requested polygon
         for band_name, band_array in data.data_vars.items():
             if "nodata" in band_array.attrs:
@@ -663,7 +699,6 @@ class PolygonDrill(Process):
                 )
             else:
                 data[band_name] = band_array.where(mask)
-
         return data
 
     def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:

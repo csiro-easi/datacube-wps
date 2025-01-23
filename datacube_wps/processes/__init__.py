@@ -437,7 +437,7 @@ class PixelDrill(Process):
 
         with dask_client:
             configure_s3_access(
-                aws_unsigned=True,
+                aws_unsigned=False,
                 region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
                 client=dask_client,
             )
@@ -623,7 +623,7 @@ class PolygonDrill(Process):
 
         with dask_client:
             configure_s3_access(
-                aws_unsigned=True,
+                aws_unsigned=False,
                 region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
                 client=dask_client,
             )

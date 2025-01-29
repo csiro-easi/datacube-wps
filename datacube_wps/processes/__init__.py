@@ -437,7 +437,7 @@ class PixelDrill(Process):
 
         with dask_client:
             configure_s3_access(
-                aws_unsigned=False,
+                aws_unsigned=False,#True,
                 region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
                 client=dask_client,
             )
@@ -502,27 +502,29 @@ class PixelDrill(Process):
         measurements = self.input.output_measurements(bag.product_definitions)
 
         data = self.input.fetch(box, dask_chunks={"time": 1})
-        data = data.compute()
+        return data
 
-        coords = {
-            "longitude": np.array([lonlat[0]]),
-            "latitude": np.array([lonlat[1]]),
-            "time": data.time.data,
-        }
+        #data = data.compute()
 
-        result = xarray.Dataset()
-        for measurement_name, measurement in measurements.items():
-            result[measurement_name] = xarray.DataArray(
-                data[measurement_name],
-                dims=("time", "longitude", "latitude"),
-                coords=coords,
-                attrs={
-                    key: value
-                    for key, value in measurement.items()
-                    if key in ["flags_definition"]
-                },
-            )
-        return result
+        #coords = {
+        #    "longitude": np.array([lonlat[0]]),
+        #    "latitude": np.array([lonlat[1]]),
+        #    "time": data.time.data,
+        #}
+
+        #result = xarray.Dataset()
+        #for measurement_name, measurement in measurements.items():
+        #    result[measurement_name] = xarray.DataArray(
+        #        data[measurement_name],
+        #        dims=("time", "longitude", "latitude"),
+        #        coords=coords,
+        #        attrs={
+        #            key: value
+        #            for key, value in measurement.items()
+        #            if key in ["flags_definition"]
+        #        },
+        #    )
+        #return result
 
     def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:
         raise NotImplementedError
@@ -618,12 +620,13 @@ class PolygonDrill(Process):
 
         if dask_client is None:
             dask_client = Client(
-                n_workers=num_workers(), processes=True, threads_per_worker=1
+                #n_workers=num_workers(), processes=True, threads_per_worker=1
+                n_workers=1, processes=True, threads_per_worker=num_workers()
             )
 
         with dask_client:
             configure_s3_access(
-                aws_unsigned=False,
+                aws_unsigned=False,#True,
                 region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
                 client=dask_client,
             )

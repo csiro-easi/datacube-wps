@@ -72,8 +72,7 @@ class LS_S2_FC_TC_Drill(PolygonDrill):
         return chart
 
     def render_outputs(self, df, chart):
-
-        return super().render_outputs(df, chart, is_enabled=True, name='tc', header=self.LONG_NAMES)
+        return super().render_outputs(df, chart, is_enabled=True, name='TC', header=self.LONG_NAMES)
 
 
 class LS_S2_FC_TC_Point_Drill(PixelDrill):
@@ -106,7 +105,7 @@ class LS_S2_FC_TC_Point_Drill(PixelDrill):
         result_da = masked_da.squeeze().compute()
 
         df = result_da.to_dataframe()
-
+        df = df.drop(['spatial_ref','x','y'], axis=1)
         df.reset_index(inplace=True)
 
         return df
@@ -141,5 +140,4 @@ class LS_S2_FC_TC_Point_Drill(PixelDrill):
         return chart
 
     def render_outputs(self, df, chart):
-
-        return super().render_outputs(df, chart, is_enabled=True, name='tc', header=self.LONG_NAMES)
+        return super().render_outputs(df, chart, is_enabled=True, name='TC', header=self.LONG_NAMES)

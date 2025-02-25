@@ -229,8 +229,8 @@ processes:
        csv: True
        table:
            columns:
-               Total Cover %:
-                   units: "#"
+               Total Cover:
+                   units: "%"
                    chartLineColor: "#3B7F00"
                    active: True
 
@@ -258,8 +258,8 @@ processes:
        csv: True
        table:
            columns:
-               Total Cover %:
-                   units: '#'
+               Total Cover:
+                   units: '%'
                    chartLineColor: "#3B7F00"
                    active: True
 

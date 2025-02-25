@@ -59,7 +59,7 @@ class LS_S2_FC_TC_Drill(PolygonDrill):
         n_time_ticks = ceil(df.shape[0] / MONTHS_IN_YEAR) * QUARTERS_IN_YEAR
 
         try:
-            line_colour = self.style['table']['columns']['Total Cover %']['chartLineColor']
+            line_colour = self.style['table']['columns']['Total Cover']['chartLineColor']
         except KeyError:
             line_colour = '#3B7F00'
 
@@ -127,7 +127,7 @@ class LS_S2_FC_TC_Point_Drill(PixelDrill):
         n_time_ticks = ceil(df.shape[0] / MONTHS_IN_YEAR) * QUARTERS_IN_YEAR
 
         try:
-            line_colour = self.style['table']['columns']['Total Cover %']['chartLineColor']
+            line_colour = self.style['table']['columns']['Total Cover']['chartLineColor']
         except KeyError:
             line_colour = '#3B7F00'
 

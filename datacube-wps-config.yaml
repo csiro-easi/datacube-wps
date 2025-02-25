@@ -301,7 +301,7 @@ processes:
                    active: True
                Unobservable:
                    units: "%"
-                   chartLineColor: "grey"
+                   chartLineColor: "black"
                    active: False
 
  - process: datacube_wps.processes.ls_s2_fc_drill.LS_S2_FC_Point_Drill
@@ -342,5 +342,5 @@ processes:
                    active: True
                Unobservable:
                    units: "%"
-                   chartLineColor: "grey"
+                   chartLineColor: "black"
                    active: False

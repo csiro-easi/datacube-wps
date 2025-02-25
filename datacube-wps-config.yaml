@@ -1,208 +1,208 @@
 about:
-    title: DEA WPS configuration
+    title: EASI WPS configuration
 
 processes:
 
- - process: datacube_wps.processes.wofsdrill.WOfSDrill
+ # - process: datacube_wps.processes.wofsdrill.WOfSDrill
 
-   about:
-       identifier: WOfSDrill
-       version: '0.4'
-       title: Water Observations from Space Pixel Drill
-       abstract: |
-           Water Observations from Space Pixel Drill
+   # about:
+       # identifier: WOfSDrill
+       # version: '0.4'
+       # title: Water Observations from Space Pixel Drill
+       # abstract: |
+           # Water Observations from Space Pixel Drill
 
-           Water Observations from Space (WOfS) provides surface water observations derived from satellite imagery for all of Australia. The current product (Version 2.1.5) includes observations taken from 1986 to the present, from the Landsat 5, 7 and 8 satellites. WOfS covers all of mainland Australia and Tasmania but excludes off-shore Territories.
+           # Water Observations from Space (WOfS) provides surface water observations derived from satellite imagery for all of Australia. The current product (Version 2.1.5) includes observations taken from 1986 to the present, from the Landsat 5, 7 and 8 satellites. WOfS covers all of mainland Australia and Tasmania but excludes off-shore Territories.
 
-           The WOfS product allows users to get a better understanding of where water is normally present in a landscape, where water is seldom observed, and where inundation has occurred occasionally.
+           # The WOfS product allows users to get a better understanding of where water is normally present in a landscape, where water is seldom observed, and where inundation has occurred occasionally.
 
-           This Pixel Drill will output the water observations for a point through time as graph.
+           # This Pixel Drill will output the water observations for a point through time as graph.
 
-           For service status information, see https://status.dea.ga.gov.au.
-       store_supported: True
-       status_supported: True
-       geometry_type: "point"
+           # For service status information, see https://status.dea.ga.gov.au.
+       # store_supported: True
+       # status_supported: True
+       # geometry_type: "point"
 
-   input:
-       product: ga_ls_wo_3
-       measurements: [water]
-       group_by: solar_day
-       fuse_func: datacube_wps.processes.wofls_fuser
+   # input:
+       # product: ga_ls_wo_3
+       # measurements: [water]
+       # group_by: solar_day
+       # fuse_func: datacube_wps.processes.wofls_fuser
 
-   style:
-       table:
-           columns:
-               Wet:
-                   units: "#"
-                   chartLineColor: "#4F81BD"
-                   active: True
-               Dry:
-                   units: "#"
-                   chartLineColor: "#D99694"
-                   active: True
-               Not Observable:
-                   units: "#"
-                   chartLineColor: "#707070"
-                   active: True
-
-
- - process: datacube_wps.processes.fcdrill.FCDrill
-
-   about:
-       identifier: FractionalCoverDrill
-       version: '0.3'
-       title: Fractional Cover
-       abstract: Performs Fractional Cover Polygon Drill
-       store_supported: True
-       status_supported: True
-       geometry_type: polygon
-
-   input:
-       juxtapose:
-           - product: ga_ls_fc_3
-             group_by: solar_day
-             measurements: [bs, pv, npv]
-           - product: ga_ls_wo_3
-             measurements: [water]
-             group_by: solar_day
-             fuse_func: datacube_wps.processes.wofls_fuser
-       resolution: [30, -30]
-   style:
-       table:
-           columns:
-               Bare Soil:
-                   units: "%"
-                   chartLineColor: "#8B0000"
-                   active: True
-               Photosynthetic Vegetation:
-                   units: "%"
-                   chartLineColor: "green"
-                   active: True
-               Non-Photosynthetic Vegetation:
-                   units: "%"
-                   chartLineColor: "#dac586"
-                   active: True
-               Unobservable:
-                   units: "%"
-                   # this was nice too: chartLineColor: "#6699CC"
-                   chartLineColor: "grey"
-                   active: False
-
- - process: datacube_wps.processes.lsfcdrill.LSFCDrill
-
-   about:
-       identifier: LSFractionalCoverDrill
-       version: '0.3'
-       title: Landsat Sentinel 2 Fractional Cover
-       abstract: Performs Landsat Sentinel 2 Fractional Cover Polygon Drill
-       store_supported: True
-       status_supported: True
-       geometry_type: polygon
-
-   input:
-       product: ls_s2_fc_c3
-       group_by: solar_day
-       measurements: [bs, pv, npv]
-       resolution: [30, -30]
-       output_crs: EPSG:3577
-   style:
-       table:
-           columns:
-               Bare Soil:
-                   units: "%"
-                   chartLineColor: "#8B0000"
-                   active: True
-               Photosynthetic Vegetation:
-                   units: "%"
-                   chartLineColor: "green"
-                   active: True
-               Non-Photosynthetic Vegetation:
-                   units: "%"
-                   chartLineColor: "#dac586"
-                   active: True
-               Unobservable:
-                   units: "%"
-                   # this was nice too: chartLineColor: "#6699CC"
-                   chartLineColor: "grey"
-                   active: False
+   # style:
+       # table:
+           # columns:
+               # Wet:
+                   # units: "#"
+                   # chartLineColor: "#4F81BD"
+                   # active: True
+               # Dry:
+                   # units: "#"
+                   # chartLineColor: "#D99694"
+                   # active: True
+               # Not Observable:
+                   # units: "#"
+                   # chartLineColor: "#707070"
+                   # active: True
 
 
- - process: datacube_wps.processes.mangrovedrill.MangroveDrill
+ # - process: datacube_wps.processes.fcdrill.FCDrill
 
-   about:
-       identifier: Mangrove Cover Drill
-       version: '0.2'
-       title: Mangrove Cover
-       abstract: Performs Mangrove Polygon Drill
-       store_supported: True
-       status_supported: True
-       geometry_type: polygon
+   # about:
+       # identifier: FractionalCoverDrill
+       # version: '0.3'
+       # title: Fractional Cover
+       # abstract: Performs Fractional Cover Polygon Drill
+       # store_supported: True
+       # status_supported: True
+       # geometry_type: polygon
 
-   input:
-       product: ga_ls_mangrove_cover_cyear_3
-       measurements: [canopy_cover_class]
-       resolution: [30, -30]
+   # input:
+       # juxtapose:
+           # - product: ga_ls_fc_3
+             # group_by: solar_day
+             # measurements: [bs, pv, npv]
+           # - product: ga_ls_wo_3
+             # measurements: [water]
+             # group_by: solar_day
+             # fuse_func: datacube_wps.processes.wofls_fuser
+       # resolution: [30, -30]
+   # style:
+       # table:
+           # columns:
+               # Bare Soil:
+                   # units: "%"
+                   # chartLineColor: "#8B0000"
+                   # active: True
+               # Photosynthetic Vegetation:
+                   # units: "%"
+                   # chartLineColor: "green"
+                   # active: True
+               # Non-Photosynthetic Vegetation:
+                   # units: "%"
+                   # chartLineColor: "#dac586"
+                   # active: True
+               # Unobservable:
+                   # units: "%"
+                   # # this was nice too: chartLineColor: "#6699CC"
+                   # chartLineColor: "grey"
+                   # active: False
 
-   style:
-       table:
-           columns:
-               Woodland:
-                   units: "#"
-                   chartLineColor: "#9FFF4C"
-                   active: True
-               Open Forest:
-                   units: "#"
-                   chartLineColor: "#5ECC00"
-                   active: True
-               Closed Forest:
-                   units: "#"
-                   chartLineColor: "#3B7F00"
-                   active: True
+ # - process: datacube_wps.processes.lsfcdrill.LSFCDrill
+
+   # about:
+       # identifier: LSFractionalCoverDrill
+       # version: '0.3'
+       # title: Landsat Sentinel 2 Fractional Cover
+       # abstract: Performs Landsat Sentinel 2 Fractional Cover Polygon Drill
+       # store_supported: True
+       # status_supported: True
+       # geometry_type: polygon
+
+   # input:
+       # product: ls_s2_fc_c3
+       # group_by: solar_day
+       # measurements: [bs, pv, npv]
+       # resolution: [30, -30]
+       # output_crs: EPSG:3577
+   # style:
+       # table:
+           # columns:
+               # Bare Soil:
+                   # units: "%"
+                   # chartLineColor: "#8B0000"
+                   # active: True
+               # Photosynthetic Vegetation:
+                   # units: "%"
+                   # chartLineColor: "green"
+                   # active: True
+               # Non-Photosynthetic Vegetation:
+                   # units: "%"
+                   # chartLineColor: "#dac586"
+                   # active: True
+               # Unobservable:
+                   # units: "%"
+                   # # this was nice too: chartLineColor: "#6699CC"
+                   # chartLineColor: "grey"
+                   # active: False
 
 
- - process: datacube_wps.processes.witprocess.WIT
+ # - process: datacube_wps.processes.mangrovedrill.MangroveDrill
 
-   about:
-       identifier: WIT
-       version: '0.2'
-       title: WIT
-       abstract: WIT polygon drill
-       store_supported: True
-       status_supported: True
-       geometry_type: polygon
-       guard_rail: False
-   input:
-       reproject:
-         output_crs: EPSG:3577
-         resolution: [-30, 30]
-         resampling: nearest
-       input:
-         transform: apply_mask
-         mask_measurement_name: pmask
-         apply_to: [bs, pv, npv, TCW]
-         input:
-           juxtapose:
-             - product: ga_ls_fc_3
-               measurements: [bs, pv, npv]
-             - transform: datacube_wps.processes.witprocess.TWnMask
-               input:
-                 juxtapose:
-                   - collate:
-                       - product: ga_ls8c_ard_3
-                         measurements: [blue, green, red, nir, swir1, swir2, fmask, nbart_contiguity]
-                         gqa_iterative_mean_xy: [0, 1]
-                         dataset_predicate: datacube_wps.processes.witprocess.ls8_on
-                       - product: ga_ls7e_ard_3
-                         measurements: [blue, green, red, nir, swir1, swir2, fmask, nbart_contiguity]
-                         gqa_iterative_mean_xy: [0, 1]
-                         dataset_predicate: datacube_wps.processes.witprocess.ls7_on
-                       - product: ga_ls5t_ard_3
-                         measurements: [blue, green, red, nir, swir1, swir2, fmask, nbart_contiguity]
-                         gqa_iterative_mean_xy: [0, 1]
-                         dataset_predicate: datacube_wps.processes.witprocess.ls5_on_1ym
-                   - product: ga_ls_wo_3
-                     measurements: [water]
-   style:
+   # about:
+       # identifier: Mangrove Cover Drill
+       # version: '0.2'
+       # title: Mangrove Cover
+       # abstract: Performs Mangrove Polygon Drill
+       # store_supported: True
+       # status_supported: True
+       # geometry_type: polygon
+
+   # input:
+       # product: ga_ls_mangrove_cover_cyear_3
+       # measurements: [canopy_cover_class]
+       # resolution: [30, -30]
+
+   # style:
+       # table:
+           # columns:
+               # Woodland:
+                   # units: "#"
+                   # chartLineColor: "#9FFF4C"
+                   # active: True
+               # Open Forest:
+                   # units: "#"
+                   # chartLineColor: "#5ECC00"
+                   # active: True
+               # Closed Forest:
+                   # units: "#"
+                   # chartLineColor: "#3B7F00"
+                   # active: True
+
+
+ # - process: datacube_wps.processes.witprocess.WIT
+
+   # about:
+       # identifier: WIT
+       # version: '0.2'
+       # title: WIT
+       # abstract: WIT polygon drill
+       # store_supported: True
+       # status_supported: True
+       # geometry_type: polygon
+       # guard_rail: False
+   # input:
+       # reproject:
+         # output_crs: EPSG:3577
+         # resolution: [-30, 30]
+         # resampling: nearest
+       # input:
+         # transform: apply_mask
+         # mask_measurement_name: pmask
+         # apply_to: [bs, pv, npv, TCW]
+         # input:
+           # juxtapose:
+             # - product: ga_ls_fc_3
+               # measurements: [bs, pv, npv]
+             # - transform: datacube_wps.processes.witprocess.TWnMask
+               # input:
+                 # juxtapose:
+                   # - collate:
+                       # - product: ga_ls8c_ard_3
+                         # measurements: [blue, green, red, nir, swir1, swir2, fmask, nbart_contiguity]
+                         # gqa_iterative_mean_xy: [0, 1]
+                         # dataset_predicate: datacube_wps.processes.witprocess.ls8_on
+                       # - product: ga_ls7e_ard_3
+                         # measurements: [blue, green, red, nir, swir1, swir2, fmask, nbart_contiguity]
+                         # gqa_iterative_mean_xy: [0, 1]
+                         # dataset_predicate: datacube_wps.processes.witprocess.ls7_on
+                       # - product: ga_ls5t_ard_3
+                         # measurements: [blue, green, red, nir, swir1, swir2, fmask, nbart_contiguity]
+                         # gqa_iterative_mean_xy: [0, 1]
+                         # dataset_predicate: datacube_wps.processes.witprocess.ls5_on_1ym
+                   # - product: ga_ls_wo_3
+                     # measurements: [water]
+   # style:
 
 
  - process: datacube_wps.processes.ls_s2_fc_tc_drill.LS_S2_FC_TC_Drill

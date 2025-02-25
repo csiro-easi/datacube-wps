@@ -1,8 +1,9 @@
 import altair
+import datetime as dt
 from math import ceil
 import numpy as np
 import xarray as xr
-from pywps import ComplexOutput, LiteralOutput
+from pywps import ComplexInput, ComplexOutput, LiteralOutput
 
 from . import FORMATS, PolygonDrill, PixelDrill, chart_dimensions, log_call
 
@@ -27,6 +28,19 @@ class LS_S2_FC_Drill(PolygonDrill):
 
     POLYGON_MASK_VALUE = 254
     NO_DATA_VALUE = 255
+
+    DEFAULT_START_DATE = dt.datetime(2016, 1, 1, 0, 0, 0)
+
+    def input_formats(self):
+        return [
+            ComplexInput(
+                "geometry", "Geometry", supported_formats=[FORMATS["polygon"]]
+            ),
+            ComplexInput(
+                "start", "Start Date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
+            ),
+            ComplexInput("end", "End date", supported_formats=[FORMATS["datetime"]]),
+        ]
 
     def output_formats(self):
         return [
@@ -172,6 +186,19 @@ class LS_S2_FC_Point_Drill(PixelDrill):
                   'Unobservable']
 
     NO_DATA_VALUE = 255
+
+    DEFAULT_START_DATE = dt.datetime(2016, 1, 1, 0, 0, 0)
+
+    def input_formats(self):
+        return [
+            ComplexInput(
+                "geometry", "Location (Lon, Lat)", supported_formats=[FORMATS["point"]]
+            ),
+            ComplexInput(
+                "start", "Start Date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
+            ),
+            ComplexInput("end", "End date", supported_formats=[FORMATS["datetime"]]),
+        ]
 
     def output_formats(self):
         return [

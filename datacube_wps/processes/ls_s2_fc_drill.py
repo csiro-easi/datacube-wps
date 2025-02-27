@@ -3,7 +3,7 @@ import datetime as dt
 from math import ceil
 import numpy as np
 import xarray as xr
-from pywps import ComplexInput, ComplexOutput, LiteralOutput
+from pywps import ComplexInput, ComplexOutput, LiteralInput, LiteralOutput
 
 from . import FORMATS, PolygonDrill, PixelDrill, chart_dimensions, log_call
 
@@ -33,11 +33,14 @@ class LS_S2_FC_Drill(PolygonDrill):
 
     def input_formats(self):
         return [
+            LiteralInput(
+                "name", "Polygon name", "string", default=""
+            ),
             ComplexInput(
                 "geometry", "Geometry", supported_formats=[FORMATS["polygon"]]
             ),
             ComplexInput(
-                "start", "Start Date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
+                "start", "Start date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
             ),
             ComplexInput("end", "End date", supported_formats=[FORMATS["datetime"]]),
         ]
@@ -165,8 +168,8 @@ class LS_S2_FC_Drill(PolygonDrill):
 
         return chart
 
-    def render_outputs(self, df, chart):
-        return super().render_outputs(df, chart, is_enabled=True, name='FC', header=self.LONG_NAMES)
+    def render_outputs(self, df, chart, is_enabled=True, name="Timeseries", header=True):
+        return super().render_outputs(df, chart, is_enabled=True, name=name, header=self.LONG_NAMES)
 
 
 class LS_S2_FC_Point_Drill(PixelDrill):
@@ -191,11 +194,14 @@ class LS_S2_FC_Point_Drill(PixelDrill):
 
     def input_formats(self):
         return [
-            ComplexInput(
-                "geometry", "Location (Lon, Lat)", supported_formats=[FORMATS["point"]]
+            LiteralInput(
+                "name", "Point name", "string", default=""
             ),
             ComplexInput(
-                "start", "Start Date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
+                "geometry", "Location (lon, lat)", supported_formats=[FORMATS["point"]]
+            ),
+            ComplexInput(
+                "start", "Start date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
             ),
             ComplexInput("end", "End date", supported_formats=[FORMATS["datetime"]]),
         ]
@@ -277,5 +283,5 @@ class LS_S2_FC_Point_Drill(PixelDrill):
 
         return chart
 
-    def render_outputs(self, df, chart):
-        return super().render_outputs(df, chart, is_enabled=True, name='FC', header=self.LONG_NAMES)
+    def render_outputs(self, df, chart, is_enabled=True, name="Timeseries", header=True):
+        return super().render_outputs(df, chart, is_enabled=True, name=name, header=self.LONG_NAMES)

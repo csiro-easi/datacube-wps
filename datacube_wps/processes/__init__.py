@@ -14,6 +14,7 @@ import pandas
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pywps.configuration as config
+import random
 import rasterio.features
 import xarray
 from botocore.client import Config
@@ -240,6 +241,23 @@ def _get_feature(request):
     return _parse_geom(request_json)
 
 
+def create_random_name():
+    return str(random.randint(0, 9999)).zfill(4)
+
+
+def _get_name(request):
+    mint_random_name = False
+    if "name" not in request.inputs:
+        mint_random_name = True
+    elif request.inputs["name"][0].data == "None" or request.inputs["name"][0].data.strip() == "":
+        mint_random_name = True
+    if mint_random_name:
+        name = create_random_name()
+    else:
+        name = request.inputs["name"][0].data
+    return name
+
+
 def _get_time(request):
     if "start" not in request.inputs or "end" not in request.inputs:
         return None
@@ -409,16 +427,17 @@ class PixelDrill(Process):
         ]
 
     def request_handler(self, request, response):
+        name = _get_name(request)
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)
 
-        result = self.query_handler(time, feature, parameters=parameters)
+        result = self.query_handler(name, time, feature, parameters=parameters)
 
         if 'csv' in self.style:
-            outputs = self.render_outputs(result["data"], None)
+            outputs = self.render_outputs(result["data"], None, name=name)
         elif 'table' in self.style:
-            outputs = self.render_outputs(result["data"], result["chart"])
+            outputs = self.render_outputs(result["data"], result["chart"], name=name)
         else:
             raise ProcessError('No output style configured for process!')
 
@@ -426,7 +445,7 @@ class PixelDrill(Process):
         return response
 
     @log_call
-    def query_handler(self, time, feature, dask_client=None, parameters=None):
+    def query_handler(self, name, time, feature, dask_client=None, parameters=None):
         if parameters is None:
             parameters = {}
 
@@ -445,7 +464,7 @@ class PixelDrill(Process):
             with datacube.Datacube() as dc:
                 data = self.input_data(dc, time, feature)
 
-        df = self.process_data(data, {"time": time, "feature": feature, **parameters})
+        df = self.process_data(data, {"name": name, "time": time, "feature": feature, **parameters})
 
         # If csv specified, return timeseries in csv form
         if 'csv' in self.style:
@@ -597,16 +616,17 @@ class PolygonDrill(Process):
 
     def request_handler(self, request, response):
 
+        name = _get_name(request)
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)
 
-        result = self.query_handler(time, feature, parameters=parameters)
+        result = self.query_handler(name, time, feature, parameters=parameters)
 
         if 'csv' in self.style:
-            outputs = self.render_outputs(result["data"], None)
+            outputs = self.render_outputs(result["data"], None, name=name)
         elif 'table' in self.style:
-            outputs = self.render_outputs(result["data"], result["chart"])
+            outputs = self.render_outputs(result["data"], result["chart"], name=name)
         else:
             raise ProcessError('No output style configured for process!')
 
@@ -614,7 +634,7 @@ class PolygonDrill(Process):
         return response
 
     @log_call
-    def query_handler(self, time, feature, dask_client=None, parameters=None):
+    def query_handler(self, name, time, feature, dask_client=None, parameters=None):
         if parameters is None:
             parameters = {}
 
@@ -634,7 +654,7 @@ class PolygonDrill(Process):
             with datacube.Datacube() as dc:
                 data = self.input_data(dc, time, feature)
 
-        df = self.process_data(data, {"time": time, "feature": feature, **parameters})
+        df = self.process_data(data, {"name": name, "time": time, "feature": feature, **parameters})
 
         # If csv specified, return timeseries in csv form
         if 'csv' in self.style:

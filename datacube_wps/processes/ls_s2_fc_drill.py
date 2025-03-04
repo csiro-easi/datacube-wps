@@ -34,7 +34,7 @@ class LS_S2_FC_Drill(PolygonDrill):
     def input_formats(self):
         return [
             LiteralInput(
-                "name", "Polygon name", "string", default=""
+                "geometry_id", "Polygon name", "string", default=""
             ),
             ComplexInput(
                 "geometry", "Geometry", supported_formats=[FORMATS["polygon"]]
@@ -195,7 +195,7 @@ class LS_S2_FC_Point_Drill(PixelDrill):
     def input_formats(self):
         return [
             LiteralInput(
-                "name", "Point name", "string", default=""
+                "geometry_id", "Point name", "string", default=""
             ),
             ComplexInput(
                 "geometry", "Location (lon, lat)", supported_formats=[FORMATS["point"]]

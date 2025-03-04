@@ -245,17 +245,17 @@ def create_random_name():
     return str(random.randint(0, 9999)).zfill(4)
 
 
-def _get_name(request):
+def _get_geometry_id(request):
     mint_random_name = False
-    if "name" not in request.inputs:
+    if "geometry_id" not in request.inputs:
         mint_random_name = True
-    elif request.inputs["name"][0].data == "None" or request.inputs["name"][0].data.strip() == "":
+    elif request.inputs["geometry_id"][0].data == "None" or request.inputs["geometry_id"][0].data.strip() == "":
         mint_random_name = True
     if mint_random_name:
-        name = create_random_name()
+        geometry_id = create_random_name()
     else:
-        name = request.inputs["name"][0].data
-    return name
+        geometry_id = request.inputs["geometry_id"][0].data
+    return geometry_id
 
 
 def _get_time(request):
@@ -427,7 +427,7 @@ class PixelDrill(Process):
         ]
 
     def request_handler(self, request, response):
-        name = _get_name(request)
+        name = _get_geometry_id(request)
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)
@@ -616,7 +616,7 @@ class PolygonDrill(Process):
 
     def request_handler(self, request, response):
 
-        name = _get_name(request)
+        name = _get_geometry_id(request)
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)

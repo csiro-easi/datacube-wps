@@ -27,6 +27,25 @@ from pywps import ComplexInput, ComplexOutput, Format, Process
 from pywps.app.exceptions import ProcessError
 
 
+# ***** Trial Drill Test
+
+from pywps import LiteralInput
+
+class AnyValueInput(LiteralInput):
+    """
+    Custom input that accepts any type of data and modifies the WPS describe response.
+    """
+    def __init__(self, *args, **kwargs):
+        super(AnyValueInput, self).__init__(*args, **kwargs)
+
+    @property
+    def json(self):
+        default_json = super().json
+        default_json['data_type'] = ""
+        return default_json
+
+# ***** Trial Drill Test
+
 FORMATS = {
     # Defines the format for the returned object
     # in this case a JSON object containing a CSV
@@ -41,6 +60,10 @@ FORMATS = {
     "polygon": Format(
         "application/vnd.geo+json",
         schema="http://geojson.org/geojson-spec.html#polygon",
+    ),
+    "geojson": Format(
+        "application/vnd.geo+json",
+        schema="http://geojson.org/geojson-spec.html#geojson",
     ),
     "datetime": Format(
         "application/vnd.geo+json", schema="http://www.w3.org/TR/xmlschema-2/#dateTime"

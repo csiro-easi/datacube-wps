@@ -344,3 +344,44 @@ processes:
                    units: "%"
                    chartLineColor: "black"
                    active: False
+
+
+ - process: datacube_wps.processes.trialdrill.Trial_Drill
+
+   about:
+       identifier: Trial Drill
+       version: '0.1'
+       title: Trial Drill
+       abstract: Trial Drill
+       store_supported: False
+       status_supported: True
+
+   input:
+       reproject:
+           output_crs: EPSG:3577
+           resolution: [-30,30]
+           resampling: nearest
+       input:
+           product: ls_s2_fc_c3
+           measurements: [bs, pv, npv]
+
+   style:
+       csv: True
+       table:
+           columns:
+               Bare Soil:
+                   units: "%"
+                   chartLineColor: "#8B0000"
+                   active: True
+               Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "green"
+                   active: True
+               Non-Photosynthetic Vegetation:
+                   units: "%"
+                   chartLineColor: "#dac586"
+                   active: True
+               Unobservable:
+                   units: "%"
+                   chartLineColor: "grey"
+                   active: False

@@ -370,19 +370,19 @@ processes:
        csv: True
        table:
            columns:
-               Bare Soil:
+               bare ground:
                    units: "%"
-                   chartLineColor: "#8B0000"
+                   chartLineColor: "#FF0000"
                    active: True
-               Photosynthetic Vegetation:
+               green:
                    units: "%"
-                   chartLineColor: "green"
+                   chartLineColor: "#00B050"
                    active: True
-               Non-Photosynthetic Vegetation:
+               non-green:
                    units: "%"
-                   chartLineColor: "#dac586"
+                   chartLineColor: "#0070C0"
                    active: True
-               Total Cover:
+               total:
                    units: "%"
-                   chartLineColor: "white"
+                   chartLineColor: "#FFFFFF"
                    active: True

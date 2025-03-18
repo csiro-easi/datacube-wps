@@ -4,31 +4,33 @@ from math import ceil
 import numpy as np
 import pandas as pd
 import xarray as xr
+
 from pywps import ComplexInput, ComplexOutput, LiteralInput, LiteralOutput
 
-from .custom_input import AnyValueInput
 from . import FORMATS, GeoDrill, chart_dimensions, log_call
+
+from .custom_input import AnyValueInput
 
 
 class LS_S2_FC_Mean_Drill(GeoDrill):
     """
-    Landsat/Sentinel-2 Fractional Cover Mean Drill. Works for both Points and Polygons.
+    Landsat/Sentinel-2 Fractional Cover Mean Drill.
 
     Values are means of polygon measurements or point values.
     """
 
     SHORT_NAMES = [
-        "BS",
-        "PV",
-        "NPV",
-        "TC"
+        "bs",
+        "pv",
+        "npv",
+        "tc"
     ]
 
     LONG_NAMES = [
-        "Bare Soil",
-        "Photosynthetic Vegetation",
-        "Non-Photosynthetic Vegetation",
-        "Total Cover"
+        "bare ground",
+        "green",
+        "non-green",
+        "total"
     ]
 
     # This is when Landsat/Sentinel-2 data becomes available.
@@ -75,13 +77,13 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
         # Compute results.
         mean_ds = mean_ds.compute()
 
-        # Rename band names from DC to suit WPS response code.
-        mean_ds = mean_ds.rename({
-            "bs" : "BS",
-            "pv" : "PV",
-            "npv" : "NPV",
-            "tc" : "TC"
-        })
+        # Change time values from mid-month to start-of-month.
+        new_dates = []
+        for t in mean_ds["time"].values:
+            tmp_pt = pd.to_datetime(t)
+            tmp_dt = dt.datetime(tmp_pt.year, tmp_pt.month, 1, 0, 0, 0)
+            new_dates.append(np.datetime64(tmp_dt))
+        mean_ds = mean_ds.assign_coords({"time": new_dates})
 
         # Convert result to a DataFrame and return.
         df = mean_ds.to_dataframe()

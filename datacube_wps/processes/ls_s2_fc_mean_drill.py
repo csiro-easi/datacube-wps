@@ -32,7 +32,7 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
     ]
 
     # This is when Landsat/Sentinel-2 data becomes available.
-    DEFAULT_START_DATE = dt.datetime(2016, 1, 1, 0, 0, 0)
+    #DEFAULT_START_DATE = dt.datetime(2016, 1, 1, 0, 0, 0)
 
     # This is the no-data value for the input product.
     NO_DATA_VALUE = 255
@@ -45,12 +45,12 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
             ComplexInput(
                 "geometry", "Geometry", supported_formats=[FORMATS["geojson"]]
             ),
-            ComplexInput(
-                "start", "Start Date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
-            ),
-            ComplexInput(
-                "end", "End Date", supported_formats=[FORMATS["datetime"]]
-            ),
+            #ComplexInput(
+            #    "start", "Start Date", supported_formats=[FORMATS["datetime"]], default=self.DEFAULT_START_DATE
+            #),
+            #ComplexInput(
+            #    "end", "End Date", supported_formats=[FORMATS["datetime"]]
+            #),
         ]
 
     def output_formats(self):

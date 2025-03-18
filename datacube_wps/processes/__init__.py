@@ -306,8 +306,11 @@ def _render_outputs(
     except KeyError:
         csv_df = df
 
+    # Set time format to yyyy-mm-ddTHH:MM:SS.msZ (milliseconds to 3-decimal places)
+    csv_df["time"] = csv_df["time"].dt.strftime("%Y-%m-%dT%H:%M:%S.") + (csv_df["time"].dt.microsecond // 1000).astype(str).str.zfill(3) + "Z"
+
     csv_df.set_index("time", inplace=True)
-    csv = csv_df.to_csv(header=header, date_format="%Y-%m-%d")
+    csv = csv_df.to_csv(header=header)
 
     if "table" in style:
         table_style = {"tableStyle": style["table"]}

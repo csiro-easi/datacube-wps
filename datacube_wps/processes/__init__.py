@@ -16,6 +16,7 @@ import pyarrow.parquet as pq
 import pywps.configuration as config
 import random
 import rasterio.features
+import shapely
 import xarray
 from botocore.client import Config
 from dask.distributed import Client
@@ -26,25 +27,6 @@ from dateutil.parser import parse
 from pywps import ComplexInput, ComplexOutput, Format, Process
 from pywps.app.exceptions import ProcessError
 
-
-# ***** Trial Drill Test
-
-from pywps import LiteralInput
-
-class AnyValueInput(LiteralInput):
-    """
-    Custom input that accepts any type of data and modifies the WPS describe response.
-    """
-    def __init__(self, *args, **kwargs):
-        super(AnyValueInput, self).__init__(*args, **kwargs)
-
-    @property
-    def json(self):
-        default_json = super().json
-        default_json['data_type'] = ""
-        return default_json
-
-# ***** Trial Drill Test
 
 FORMATS = {
     # Defines the format for the returned object
@@ -69,6 +51,7 @@ FORMATS = {
         "application/vnd.geo+json", schema="http://www.w3.org/TR/xmlschema-2/#dateTime"
     ),
 }
+
 
 GB = 1.0e9
 MAX_BYTES_IN_GB = 20.0
@@ -408,7 +391,192 @@ def num_workers():
     return int(os.getenv("DATACUBE_WPS_NUM_WORKERS", "4"))
 
 
-class PixelDrill(Process):
+class GeoDrill(Process):
+    """
+    Abstract Process class for geospatial Point/Polygon Drills.
+    """
+
+    def __init__(self, about, input, style):
+        super().__init__(
+            handler=self.request_handler,
+            inputs=self.input_formats(),
+            outputs=self.output_formats(),
+            **{
+                key: value
+                for key, value in about.items()
+                if key not in ["geometry_type", "guard_rail"]
+            },
+        )
+
+        self.about = about
+        self.input = input
+        self.style = style
+        self.json_version = "v8"
+
+    def input_formats(self):
+        return [
+            ComplexInput(
+                "geometry", "Geometry", supported_formats=[FORMATS["geojson"]]
+            ),
+            ComplexInput(
+                "start", "Start Date", supported_formats=[FORMATS["datetime"]]
+            ),
+            ComplexInput(
+                "end", "End Date", supported_formats=[FORMATS["datetime"]]
+            ),
+        ]
+
+    def output_formats(self):
+        return [
+            ComplexOutput(
+                "timeseries", "Timeseries Drill", supported_formats=[FORMATS["output_json"]],
+            )
+        ]
+
+    def request_handler(self, request, response):
+        name = _get_geometry_id(request)
+        time = _get_time(request)
+        feature = _get_feature(request)
+        parameters = _get_parameters(request)
+
+        if not (isinstance(feature.geom, shapely.geometry.polygon.Polygon) or
+                isinstance(feature.geom, shapely.geometry.point.Point)):
+            raise ProcessError("Geometry must be either a polygon or a point!")
+
+        self.is_polygon = isinstance(feature.geom, shapely.geometry.polygon.Polygon)
+
+        result = self.query_handler(name, time, feature, parameters=parameters)
+
+        if "csv" in self.style:
+            outputs = self.render_outputs(result["data"], None, name=name)
+        elif "table" in self.style:
+            outputs = self.render_outputs(result["data"], result["chart"], name=name)
+        else:
+            raise ProcessError("No output style configured for process!")
+
+        _populate_response(response, outputs)
+        return response
+
+    @log_call
+    def query_handler(self, name, time, feature, dask_client=None, parameters=None):
+        if parameters is None:
+            parameters = {}
+
+        if dask_client is None:
+            dask_client = Client(
+                n_workers=1, processes=True, threads_per_worker=num_workers()
+            )
+
+        with dask_client:
+            configure_s3_access(
+                aws_unsigned=False,#True,
+                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
+                client=dask_client,
+            )
+
+            with datacube.Datacube() as dc:
+                data = self.input_data(dc, time, feature)
+
+        df = self.process_data(data, {"name": name, "time": time, "feature": feature, **parameters})
+
+        # If csv specified, return timeseries in csv form
+        if "csv" in self.style:
+            return {"data": df}
+        # If table style specified in config, return chart (static timeseries)
+        elif "table" in self.style:
+            chart = self.render_chart(df)
+            return {"data": df, "chart": chart}
+        else:
+            return {}
+
+    @log_call
+    def input_data(self, dc, time, feature):
+        if time is None:
+            bag = self.input.query(dc, geopolygon=feature)
+        else:
+            bag = self.input.query(dc, time=time, geopolygon=feature)
+
+        output_crs = self.input.get("output_crs")
+        resolution = self.input.get("resolution")
+        align = self.input.get("align")
+
+        if not (output_crs and resolution):
+            if type(self.input) in (Product,):
+                if not bag.product_definitions[self.input._product].grid_spec:
+                    output_crs = mostcommon_crs(list(bag.bag))
+            elif type(self.input) in (Juxtapose,):
+                grid_specs = [product_definition.grid_spec for product_definition in list(bag.product_definitions.values()) if getattr(product_definition, "grid_spec", None)]
+                if len(set(grid_specs)) > 1:
+                    raise ValueError("Multiple grid_spec detected across all products - override target output_crs, resolution in config")
+                else:
+                    if not resolution:
+                        raise ValueError("add target resolution to config")
+                    elif not output_crs:
+                        output_crs = mostcommon_crs(bag.contained_datasets())                    
+
+        box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
+
+        # Apply Guard Rail if required.
+        if self.about.get("guard_rail", True):
+            # HACK: Get around issue where VirtualDatasetBox has a geobox but thinks it doesn't because load_natively flag is True.
+            # Need load_natively to be False to be able to call box.shape() inside guard_rail check function.
+            # Don't have time to understand how VirtualDatasets work and why this is happening in any more detail - just need the drill to work :)
+            run_hack = box.load_natively and box.geobox is not None
+            if run_hack:
+                load_natively = box.load_natively
+                box.load_natively = False
+            _guard_rail(self.input, box)
+            if run_hack:
+                box.load_natively = load_natively
+
+        data = self.input.fetch(box, dask_chunks={"time": 1})
+
+        # If geometry is a polygon, mask it.
+        if self.is_polygon:
+            MASK_ALL_TOUCHED = False
+            mask = geometry_mask(feature, data.geobox, all_touched=MASK_ALL_TOUCHED, invert=True)
+            data = self.mask_polygon(data, mask)
+
+        return data
+
+    def mask_polygon(self, data: xarray.Dataset, mask: np.array) -> xarray.Dataset:
+        # Mask data outside requested polygon with original data's nodata value.
+        for band_name, band_array in data.data_vars.items():
+            if "nodata" in band_array.attrs:
+                data[band_name] = band_array.where(
+                    mask, other=band_array.attrs["nodata"]
+                )
+            else:
+                data[band_name] = band_array.where(mask)
+        return data
+
+    def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:
+        raise NotImplementedError
+
+    def render_chart(self, df: pandas.DataFrame) -> altair.Chart:
+        raise NotImplementedError
+
+    def render_outputs(
+        self,
+        df: pandas.DataFrame,
+        chart: altair.Chart = None,
+        is_enabled=True,
+        name="Timeseries",
+        header=True,
+    ):
+        return _render_outputs(
+            self.uuid,
+            self.style,
+            df,
+            chart,
+            json_version=self.json_version,
+            is_enabled=is_enabled,
+            name=name,
+            header=header,
+        )
+
+
+class PixelDrill(Process): # DEPRECATED
     def __init__(self, about, input, style):
         if "geometry_type" in about:
             assert about["geometry_type"] == "point"
@@ -594,7 +762,7 @@ class PixelDrill(Process):
         )
 
 
-class PolygonDrill(Process):
+class PolygonDrill(Process): # DEPRECATED
     def __init__(self, about, input, style):
         if "geometry_type" in about:
             assert about["geometry_type"] == "polygon"

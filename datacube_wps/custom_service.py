@@ -5,11 +5,16 @@ from .custom_response import MyDescribeResponse
 
 
 class MyService(Service):
+    """
+    A custom Service class to use a custom DescribeResponse class.
+    """
     def __init__(self, processes: Sequence = [], cfgfiles=None, preprocessors: Optional[Dict] = None):
         super().__init__(processes, cfgfiles, preprocessors)
 
-    def describe(self, wps_request, uuid, identifiers): # Override describe
+    def describe(self, wps_request, uuid, identifiers):
+        """
+        Override base implementation to use custom DescribeResponse class.
+        """
         response_cls = MyDescribeResponse
-        #response.get_response("describe")
         return response_cls(wps_request, uuid, processes=self.processes,
                             identifiers=identifiers)

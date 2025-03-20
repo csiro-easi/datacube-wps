@@ -68,8 +68,7 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
         # 1. Convert no-data values to NaNs
         # 2. Take the mean of the non-NaN values
         # 3. Replace any NaN means with zero
-        # 4. Round to 2-decimal places
-        mean_ds = data.where(data != self.NO_DATA_VALUE, other=np.nan).mean(skipna=True, dim=["x", "y"]).fillna(0.0).round(2)
+        mean_ds = data.where(data != self.NO_DATA_VALUE, other=np.nan).mean(skipna=True, dim=["x", "y"]).fillna(0.0)
 
         # Build Total Cover means from PV and NPV.
         mean_ds["tc"] = mean_ds["pv"] + mean_ds["npv"]

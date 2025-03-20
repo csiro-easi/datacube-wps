@@ -247,21 +247,21 @@ def _get_feature(request):
     return _parse_geom(request_json)
 
 
-def create_random_name():
+def create_random_geometry_id():
     return str(random.randint(0, 9999)).zfill(4)
 
 
 def _get_geometry_id(request):
-    mint_random_name = False
+    mint_random_id = False
     if "geometry_id" not in request.inputs:
-        mint_random_name = True
+        mint_random_id = True
     elif request.inputs["geometry_id"][0].data == "None" or request.inputs["geometry_id"][0].data.strip() == "":
-        mint_random_name = True
-    if mint_random_name:
-        geometry_id = create_random_name()
+        mint_random_id = True
+    if mint_random_id:
+        geo_id = create_random_geometry_id()
     else:
-        geometry_id = request.inputs["geometry_id"][0].data
-    return geometry_id
+        geo_id = request.inputs["geometry_id"][0].data
+    return geo_id
 
 
 def _get_time(request):
@@ -442,11 +442,14 @@ class GeoDrill(Process):
         feature = _get_feature(request)
         parameters = _get_parameters(request)
 
-        if not (isinstance(feature.geom, shapely.geometry.polygon.Polygon) or
-                isinstance(feature.geom, shapely.geometry.point.Point)):
+        if not (
+            isinstance(feature.geom, shapely.geometry.multipolygon.MultiPolygon) or
+            isinstance(feature.geom, shapely.geometry.polygon.Polygon) or
+            isinstance(feature.geom, shapely.geometry.point.Point
+        )):
             raise ProcessError("Geometry must be either a polygon or a point!")
 
-        self.is_polygon = isinstance(feature.geom, shapely.geometry.polygon.Polygon)
+        self.is_polygon = not isinstance(feature.geom, shapely.geometry.point.Point)
 
         result = self.query_handler(name, time, feature, parameters=parameters)
 
@@ -809,7 +812,6 @@ class PolygonDrill(Process): # DEPRECATED
         ]
 
     def request_handler(self, request, response):
-
         name = _get_geometry_id(request)
         time = _get_time(request)
         feature = _get_feature(request)

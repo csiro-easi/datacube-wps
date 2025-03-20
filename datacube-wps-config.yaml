@@ -386,3 +386,33 @@ processes:
                    units: "%"
                    chartLineColor: "#FFFFFF"
                    active: True
+
+
+ - process: datacube_wps.processes.ls_s2_fc_tc_prop_drill.LS_S2_FC_TC_Prop_Drill
+
+   about:
+       identifier: LS S2 FC TC Prop Drill
+       version: '1.0'
+       title: LS/S-2 FC TC Prop Drill
+       abstract: Landsat/Sentinel-2 Fractional Cover Total Cover Proportion Drill
+       store_supported: False
+       status_supported: True
+       guard_rail: True
+
+   input:
+       reproject:
+           output_crs: EPSG:3577
+           resolution: [-30,30]
+           resampling: nearest
+       input:
+           product: ls_s2_fc_c3
+           measurements: [tc]
+
+   style:
+       csv: True
+       table:
+           columns:
+               pixel frac:
+                   units: "%"
+                   chartLineColor: "#FFFFFF"
+                   active: True

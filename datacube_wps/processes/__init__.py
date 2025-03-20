@@ -287,6 +287,18 @@ def _get_parameters(request):
     return params
 
 
+def _get_additional_inputs(request):
+    EXCLUDE = ["geometry_id", "geometry", "start", "end", "parameters"]
+
+    additional_inputs = {}
+    for i in request.inputs:
+        if i in EXCLUDE or request.inputs[i][0].data == "None":
+            continue
+        additional_inputs[i] = request.inputs[i][0].data
+
+    return additional_inputs
+
+
 def _render_outputs(
     uuid,
     style,
@@ -441,6 +453,9 @@ class GeoDrill(Process):
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)
+        additional_inputs = _get_additional_inputs(request)
+
+        parameters.update(additional_inputs) # Combine parameters and additional inputs
 
         if not (
             isinstance(feature.geom, shapely.geometry.multipolygon.MultiPolygon) or

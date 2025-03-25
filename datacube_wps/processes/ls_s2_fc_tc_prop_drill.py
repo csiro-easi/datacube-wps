@@ -35,6 +35,9 @@ class LS_S2_FC_TC_Prop_Drill(GeoDrill):
     # This is the no-data value for the input product.
     NO_DATA_VALUE = 255
 
+    # Number of decimal places to output
+    OUTPUT_PRECISION = 6
+
     def input_formats(self):
         return [
             AnyValueInput(
@@ -104,7 +107,7 @@ class LS_S2_FC_TC_Prop_Drill(GeoDrill):
         range_count_ds = data.where(data >= lower_limit and data <= upper_limit, other=np.nan).count(dim=["x", "y"])
 
         # Compute percentage (count of cells within range / count of cells) * 100
-        prop_ds = (range_count_ds / total_count_ds * 100.0).compute()
+        prop_ds = (range_count_ds / total_count_ds * 100.0).round(self.OUTPUT_PRECISION).compute()
 
         # Change time values from mid-month to start-of-month.
         new_dates = []

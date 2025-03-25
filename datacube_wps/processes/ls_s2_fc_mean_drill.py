@@ -20,16 +20,16 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
     """
 
     SHORT_NAMES = [
-        "bs",
         "pv",
         "npv",
+        "bs",
         "tc"
     ]
 
     LONG_NAMES = [
-        "bare ground",
         "green",
         "non-green",
+        "bare ground",
         "total"
     ]
 
@@ -38,6 +38,9 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
 
     # This is the no-data value for the input product.
     NO_DATA_VALUE = 255
+
+    # Number of decimal places to output
+    OUTPUT_PRECISION = 6
 
     def input_formats(self):
         return [
@@ -74,7 +77,7 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
         mean_ds["tc"] = mean_ds["pv"] + mean_ds["npv"]
 
         # Compute results.
-        mean_ds = mean_ds.compute()
+        mean_ds = mean_ds.round(self.OUTPUT_PRECISION).compute()
 
         # Change time values from mid-month to start-of-month.
         new_dates = []

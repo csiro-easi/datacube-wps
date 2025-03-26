@@ -90,6 +90,7 @@ class LS_S2_FC_Mean_Drill(GeoDrill):
         # Convert result to a DataFrame and return.
         df = mean_ds.to_dataframe()
         df = df.drop("spatial_ref", axis=1)
+        df = df.reindex(columns=["pv", "npv", "bs", "tc"])
         df.reset_index(inplace=True)
 
         return df

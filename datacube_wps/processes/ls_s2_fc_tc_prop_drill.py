@@ -104,7 +104,7 @@ class LS_S2_FC_TC_Prop_Drill(GeoDrill):
         total_count_ds = data.where(data != self.POLYGON_MASK_VALUE, other=np.nan).count(dim=["x", "y"])
 
         # Count of cells that fall within defined range. Polygon and NoData mask values are > 100 so are excluded automatically.
-        range_count_ds = data.where(data >= lower_limit and data <= upper_limit, other=np.nan).count(dim=["x", "y"])
+        range_count_ds = data.where((data >= lower_limit) & (data <= upper_limit), other=np.nan).count(dim=["x", "y"])
 
         # Compute percentage (count of cells within range / count of cells) * 100
         prop_ds = (range_count_ds / total_count_ds * 100.0).round(self.OUTPUT_PRECISION).compute()

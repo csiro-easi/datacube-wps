@@ -85,7 +85,7 @@ class LS_S2_FC_Drill(PolygonDrill):
 
             # Calculate the valid vs invalid pixel counts
             total = d.count(dim=['x', 'y'])
-            total_valid = (d != self.NO_DATA_VALUE and d != self.POLYGON_MASK_VALUE).sum(dim=['x', 'y'])
+            total_valid = ((d != self.NO_DATA_VALUE) & (d != self.POLYGON_MASK_VALUE)).sum(dim=['x', 'y'])
             not_pixels = (d == self.NO_DATA_VALUE).sum(dim=['x', 'y'])
 
             # Combine both masks into one for the remainder of the calculations

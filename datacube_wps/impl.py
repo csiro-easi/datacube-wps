@@ -7,7 +7,7 @@ from datacube.virtual import construct
 from pywps import Service
 
 from .startup_utils import initialise_prometheus, setup_logger, setup_sentry
-
+from .custom_service import MyService
 
 def create_process(process, input, **settings):
     process_class = import_function(process)
@@ -46,7 +46,9 @@ def create_app():
             return ""
 
         if not service:
-            service.append(Service(read_process_catalog('datacube-wps-config.yaml'), ['pywps.cfg']))
+            # Use custom Service
+            service.append(MyService(read_process_catalog('datacube-wps-config.yaml'), ['pywps.cfg']))
+            #service.append(Service(read_process_catalog('datacube-wps-config.yaml'), ['pywps.cfg']))
         return service[0]
 
     @app.route('/ping')

@@ -6,7 +6,6 @@ from timeit import default_timer
 from collections import Counter
 
 import altair
-# import altair_saver
 import boto3
 import botocore
 import datacube
@@ -15,10 +14,12 @@ import pandas
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pywps.configuration as config
+import random
 import rasterio.features
+import shapely
 import xarray
 from botocore.client import Config
-from dask.distributed import Client, worker_client
+from dask.distributed import Client
 from datacube.utils.geometry import CRS, Geometry
 from datacube.utils.rio import configure_s3_access
 from datacube.virtual.impl import Product, Juxtapose
@@ -42,10 +43,15 @@ FORMATS = {
         "application/vnd.geo+json",
         schema="http://geojson.org/geojson-spec.html#polygon",
     ),
+    "geojson": Format(
+        "application/vnd.geo+json",
+        schema="http://geojson.org/geojson-spec.html#geojson",
+    ),
     "datetime": Format(
         "application/vnd.geo+json", schema="http://www.w3.org/TR/xmlschema-2/#dateTime"
     ),
 }
+
 
 GB = 1.0e9
 MAX_BYTES_IN_GB = 20.0
@@ -77,17 +83,9 @@ def log_call(func):
 
 @log_call
 def _uploadToS3(filename, data, mimetype):
-    # AWS_S3_CREDS = {
-    #     "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
-    #     "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
-    # }
-    # s3 = session.client("s3", **AWS_S3_CREDS)
     session = boto3.Session(profile_name="default")
     bucket = config.get_config_value("s3", "bucket")
     s3 = session.client("s3")
-
-    # bucket = s3.Bucket('test-wps')
-
     s3.upload_fileobj(
         data,
         bucket,
@@ -95,8 +93,6 @@ def _uploadToS3(filename, data, mimetype):
         ExtraArgs={"ACL": "public-read", "ContentType": mimetype},
     )
 
-    print('Made it to before the presigned url generation')
-    bucket = config.get_config_value("s3", "bucket")
     # Create unsigned s3 client for determining public s3 url
     s3 = session.client("s3", config=Config(signature_version=botocore.UNSIGNED))
     return s3.generate_presigned_url(
@@ -108,14 +104,14 @@ def _uploadToS3(filename, data, mimetype):
 
 def upload_chart_html_to_S3(chart: altair.Chart, process_id: str):
     html_io = io.StringIO()
-    chart.save(html_io, format="html", engine="vl-convert")
+    chart.save(html_io, format="html")#, engine="vl-convert")
     html_bytes = io.BytesIO(html_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.html", html_bytes, "text/html")
 
 
 def upload_chart_svg_to_S3(chart: altair.Chart, process_id: str):
     img_io = io.StringIO()
-    chart.save(img_io, format="svg", engine="vl-convert")
+    chart.save(img_io, format="svg")#, engine="vl-convert")
     img_bytes = io.BytesIO(img_io.getvalue().encode())
     return _uploadToS3(process_id + "/chart.svg", img_bytes, "image/svg+xml")
 
@@ -193,7 +189,6 @@ def _guard_rail(input, box):
         byte_count *= x
     byte_count *= sum(np.dtype(m.dtype).itemsize for m in measurement_dicts.values())
 
-    print("byte count for query: ", byte_count)
     if byte_count > MAX_BYTES_IN_GB * GB:
         raise ProcessError(
             ("requested area requires {}GB data to load - " "maximum is {}GB").format(
@@ -203,7 +198,6 @@ def _guard_rail(input, box):
 
     grouped = box.box
 
-    print("grouped shape", grouped.shape)
     assert len(grouped.shape) == 1
 
     if grouped.shape[0] == 0:
@@ -253,6 +247,23 @@ def _get_feature(request):
     return _parse_geom(request_json)
 
 
+def create_random_geometry_id():
+    return str(random.randint(0, 9999)).zfill(4)
+
+
+def _get_geometry_id(request):
+    mint_random_id = False
+    if "geometry_id" not in request.inputs:
+        mint_random_id = True
+    elif request.inputs["geometry_id"][0].data == "None" or request.inputs["geometry_id"][0].data.strip() == "":
+        mint_random_id = True
+    if mint_random_id:
+        geo_id = create_random_geometry_id()
+    else:
+        geo_id = request.inputs["geometry_id"][0].data
+    return geo_id
+
+
 def _get_time(request):
     if "start" not in request.inputs or "end" not in request.inputs:
         return None
@@ -276,6 +287,18 @@ def _get_parameters(request):
     return params
 
 
+def _get_additional_inputs(request):
+    EXCLUDE = ["geometry_id", "geometry", "start", "end", "parameters"]
+
+    additional_inputs = {}
+    for i in request.inputs:
+        if i in EXCLUDE or request.inputs[i][0].data == "None":
+            continue
+        additional_inputs[i] = request.inputs[i][0].data
+
+    return additional_inputs
+
+
 def _render_outputs(
     uuid,
     style,
@@ -295,8 +318,11 @@ def _render_outputs(
     except KeyError:
         csv_df = df
 
+    # Set time format to yyyy-mm-ddTHH:MM:SS.msZ (milliseconds to 3-decimal places)
+    csv_df["time"] = csv_df["time"].dt.strftime("%Y-%m-%dT%H:%M:%S.") + (csv_df["time"].dt.microsecond // 1000).astype(str).str.zfill(3) + "Z"
+
     csv_df.set_index("time", inplace=True)
-    csv = csv_df.to_csv(header=header, date_format="%Y-%m-%d")
+    csv = csv_df.to_csv(header=header)
 
     if "table" in style:
         table_style = {"tableStyle": style["table"]}
@@ -364,13 +390,7 @@ def _render_outputs(
 
 
 def _populate_response(response, outputs):
-    print('before response is populated')
-    print(response.outputs)
-    print('------------')
     for ident, output_value in outputs.items():
-        print('TESTING')
-        print(ident)
-        print(output_value)
         if ident in response.outputs:
             if "data" in output_value:
                 response.outputs[ident].data = output_value["data"]
@@ -386,7 +406,198 @@ def num_workers():
     return int(os.getenv("DATACUBE_WPS_NUM_WORKERS", "4"))
 
 
-class PixelDrill(Process):
+class GeoDrill(Process):
+    """
+    Abstract Process class for geospatial Point/Polygon Drills.
+    """
+
+    def __init__(self, about, input, style):
+        super().__init__(
+            handler=self.request_handler,
+            inputs=self.input_formats(),
+            outputs=self.output_formats(),
+            **{
+                key: value
+                for key, value in about.items()
+                if key not in ["geometry_type", "guard_rail"]
+            },
+        )
+
+        self.about = about
+        self.input = input
+        self.style = style
+        self.json_version = "v8"
+
+    def input_formats(self):
+        return [
+            ComplexInput(
+                "geometry", "Geometry", supported_formats=[FORMATS["geojson"]]
+            ),
+            ComplexInput(
+                "start", "Start Date", supported_formats=[FORMATS["datetime"]]
+            ),
+            ComplexInput(
+                "end", "End Date", supported_formats=[FORMATS["datetime"]]
+            ),
+        ]
+
+    def output_formats(self):
+        return [
+            ComplexOutput(
+                "timeseries", "Timeseries Drill", supported_formats=[FORMATS["output_json"]],
+            )
+        ]
+
+    def request_handler(self, request, response):
+        name = _get_geometry_id(request)
+        time = _get_time(request)
+        feature = _get_feature(request)
+        parameters = _get_parameters(request)
+        additional_inputs = _get_additional_inputs(request)
+
+        parameters.update(additional_inputs) # Combine parameters and additional inputs
+
+        if not (
+            isinstance(feature.geom, shapely.geometry.multipolygon.MultiPolygon) or
+            isinstance(feature.geom, shapely.geometry.polygon.Polygon) or
+            isinstance(feature.geom, shapely.geometry.point.Point
+        )):
+            raise ProcessError("Geometry must be either a polygon or a point!")
+
+        self.is_polygon = not isinstance(feature.geom, shapely.geometry.point.Point)
+
+        result = self.query_handler(name, time, feature, parameters=parameters)
+
+        if "csv" in self.style:
+            outputs = self.render_outputs(result["data"], None, name=name)
+        elif "table" in self.style:
+            outputs = self.render_outputs(result["data"], result["chart"], name=name)
+        else:
+            raise ProcessError("No output style configured for process!")
+
+        _populate_response(response, outputs)
+        return response
+
+    @log_call
+    def query_handler(self, name, time, feature, dask_client=None, parameters=None):
+        if parameters is None:
+            parameters = {}
+
+        if dask_client is None:
+            dask_client = Client(
+                n_workers=1, processes=True, threads_per_worker=num_workers()
+            )
+
+        with dask_client:
+            configure_s3_access(
+                aws_unsigned=False,#True,
+                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
+                client=dask_client,
+            )
+
+            with datacube.Datacube() as dc:
+                data = self.input_data(dc, time, feature)
+
+        df = self.process_data(data, {"name": name, "time": time, "feature": feature, **parameters})
+
+        # If csv specified, return timeseries in csv form
+        if "csv" in self.style:
+            return {"data": df}
+        # If table style specified in config, return chart (static timeseries)
+        elif "table" in self.style:
+            chart = self.render_chart(df)
+            return {"data": df, "chart": chart}
+        else:
+            return {}
+
+    @log_call
+    def input_data(self, dc, time, feature):
+        if time is None:
+            bag = self.input.query(dc, geopolygon=feature)
+        else:
+            bag = self.input.query(dc, time=time, geopolygon=feature)
+
+        output_crs = self.input.get("output_crs")
+        resolution = self.input.get("resolution")
+        align = self.input.get("align")
+
+        if not (output_crs and resolution):
+            if type(self.input) in (Product,):
+                if not bag.product_definitions[self.input._product].grid_spec:
+                    output_crs = mostcommon_crs(list(bag.bag))
+            elif type(self.input) in (Juxtapose,):
+                grid_specs = [product_definition.grid_spec for product_definition in list(bag.product_definitions.values()) if getattr(product_definition, "grid_spec", None)]
+                if len(set(grid_specs)) > 1:
+                    raise ValueError("Multiple grid_spec detected across all products - override target output_crs, resolution in config")
+                else:
+                    if not resolution:
+                        raise ValueError("add target resolution to config")
+                    elif not output_crs:
+                        output_crs = mostcommon_crs(bag.contained_datasets())                    
+
+        box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
+
+        # Apply Guard Rail if required.
+        if self.about.get("guard_rail", True):
+            # HACK: Get around issue where VirtualDatasetBox has a geobox but thinks it doesn't because load_natively flag is True.
+            # Need load_natively to be False to be able to call box.shape() inside guard_rail check function.
+            # Don't have time to understand how VirtualDatasets work and why this is happening in any more detail - just need the drill to work :)
+            run_hack = box.load_natively and box.geobox is not None
+            if run_hack:
+                load_natively = box.load_natively
+                box.load_natively = False
+            _guard_rail(self.input, box)
+            if run_hack:
+                box.load_natively = load_natively
+
+        data = self.input.fetch(box, dask_chunks={"time": 1})
+
+        # If geometry is a polygon, mask it.
+        if self.is_polygon:
+            MASK_ALL_TOUCHED = False
+            mask = geometry_mask(feature, data.geobox, all_touched=MASK_ALL_TOUCHED, invert=True)
+            data = self.mask_polygon(data, mask)
+
+        return data
+
+    def mask_polygon(self, data: xarray.Dataset, mask: np.array) -> xarray.Dataset:
+        # Mask data outside requested polygon with original data's nodata value.
+        for band_name, band_array in data.data_vars.items():
+            if "nodata" in band_array.attrs:
+                data[band_name] = band_array.where(
+                    mask, other=band_array.attrs["nodata"]
+                )
+            else:
+                data[band_name] = band_array.where(mask)
+        return data
+
+    def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:
+        raise NotImplementedError
+
+    def render_chart(self, df: pandas.DataFrame) -> altair.Chart:
+        raise NotImplementedError
+
+    def render_outputs(
+        self,
+        df: pandas.DataFrame,
+        chart: altair.Chart = None,
+        is_enabled=True,
+        name="Timeseries",
+        header=True,
+    ):
+        return _render_outputs(
+            self.uuid,
+            self.style,
+            df,
+            chart,
+            json_version=self.json_version,
+            is_enabled=is_enabled,
+            name=name,
+            header=header,
+        )
+
+
+class PixelDrill(Process): # DEPRECATED
     def __init__(self, about, input, style):
         if "geometry_type" in about:
             assert about["geometry_type"] == "point"
@@ -406,16 +617,6 @@ class PixelDrill(Process):
         self.input = input
         self.style = style
         self.json_version = "v8"
-
-        # self.dask_client = dask_client = Client(
-        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
-        # )
-
-        self.dask_enabled = True
-        
-        if self.dask_enabled:
-            # get the Dask Client associated with the current Gunicorn worker
-            self.dask_client = worker_client()
 
     def input_formats(self):
         return [
@@ -438,39 +639,54 @@ class PixelDrill(Process):
         ]
 
     def request_handler(self, request, response):
+        name = _get_geometry_id(request)
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)
 
-        result = self.query_handler(time, feature, parameters=parameters)
-        
-        if self.style['csv']:
-            outputs = self.render_outputs(result["data"], None)
-        
-        elif self.style['table']:
-            outputs = self.render_outputs(result["data"], result["chart"])
-        
+        result = self.query_handler(name, time, feature, parameters=parameters)
+
+        if 'csv' in self.style:
+            outputs = self.render_outputs(result["data"], None, name=name)
+        elif 'table' in self.style:
+            outputs = self.render_outputs(result["data"], result["chart"], name=name)
+        else:
+            raise ProcessError('No output style configured for process!')
+
         _populate_response(response, outputs)
         return response
 
     @log_call
-    def query_handler(self, time, feature, parameters=None):
+    def query_handler(self, name, time, feature, dask_client=None, parameters=None):
         if parameters is None:
             parameters = {}
 
-        configure_s3_access(
-            # aws_unsigned=True,
-            region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
-            client=self.dask_client,
-        )
+        if dask_client is None:
+            dask_client = Client(
+                n_workers=1, processes=False, threads_per_worker=num_workers()
+            )
 
-        with datacube.Datacube() as dc:
-            data = self.input_data(dc, time, feature)
+        with dask_client:
+            configure_s3_access(
+                aws_unsigned=False,#True,
+                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
+                client=dask_client,
+            )
 
-        df = self.process_data(data, {"time": time, "feature": feature, **parameters})
-        chart = self.render_chart(df)
+            with datacube.Datacube() as dc:
+                data = self.input_data(dc, time, feature)
 
-        return {"data": df, "chart": chart}
+        df = self.process_data(data, {"name": name, "time": time, "feature": feature, **parameters})
+
+        # If csv specified, return timeseries in csv form
+        if 'csv' in self.style:
+            return {"data": df}
+        # If table style specified in config, return chart (static timeseries)
+        elif 'table' in self.style:
+            chart = self.render_chart(df)
+            return {"data": df, "chart": chart}
+        else:
+            return {}
 
     @log_call
     def input_data(self, dc, time, feature):
@@ -479,45 +695,67 @@ class PixelDrill(Process):
         else:
             bag = self.input.query(dc, time=time, geopolygon=feature)
 
+        # X: Try using this code from polygon drill input_data func instead
+        output_crs = self.input.get('output_crs')
+        resolution = self.input.get('resolution')
+        align = self.input.get('align')
+
+        if not (output_crs and resolution):
+            if type(self.input) in (Product,):
+                if not bag.product_definitions[self.input._product].grid_spec:
+                    output_crs = mostcommon_crs(list(bag.bag))
+            elif type(self.input) in (Juxtapose,):
+                grid_specs = [product_definition.grid_spec for product_definition in list(bag.product_definitions.values()) if getattr(product_definition, 'grid_spec', None)]
+                if len(set(grid_specs)) > 1:
+                    raise ValueError('Multiple grid_spec detected across all products - override target output_crs, resolution in config')
+                else:
+                    if not resolution:
+                        raise ValueError('add target resolution to config')
+                    elif not output_crs:
+                        output_crs = mostcommon_crs(bag.contained_datasets())                    
+
+        box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
+
+        # X: Instead of this...
+        
         # Get output_crs/resolution/align params if product grid_spec is not defined
-        if bag.product_definitions[self.input._product].grid_spec is None:
-            output_crs = self.input.get('output_crs')
-            resolution = self.input.get('resolution')
-            align = self.input.get('align')
-            if output_crs is None:
-                output_crs = mostcommon_crs(list(bag.bag))
-            box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
-        else:
-            box = self.input.group(bag)
+        #if bag.product_definitions[self.input._product].grid_spec is None:
+        #    output_crs = self.input.get('output_crs')
+        #    resolution = self.input.get('resolution')
+        #    align = self.input.get('align')
+        #    if output_crs is None:
+        #        output_crs = mostcommon_crs(list(bag.bag))
+        #    box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
+        #else:
+        #    box = self.input.group(bag)
 
         lonlat = feature.coords[0]
         measurements = self.input.output_measurements(bag.product_definitions)
 
-        if self.dask_enabled:
-            data = self.input.fetch(box, dask_chunks={"time": 1})
-            data = data.compute()
-        else:
-            data = self.input.fetch(box)
+        data = self.input.fetch(box, dask_chunks={"time": 1})
+        return data
 
-        coords = {
-            "longitude": np.array([lonlat[0]]),
-            "latitude": np.array([lonlat[1]]),
-            "time": data.time.data,
-        }
+        #data = data.compute()
 
-        result = xarray.Dataset()
-        for measurement_name, measurement in measurements.items():
-            result[measurement_name] = xarray.DataArray(
-                data[measurement_name],
-                dims=("time", "longitude", "latitude"),
-                coords=coords,
-                attrs={
-                    key: value
-                    for key, value in measurement.items()
-                    if key in ["flags_definition"]
-                },
-            )
-        return result
+        #coords = {
+        #    "longitude": np.array([lonlat[0]]),
+        #    "latitude": np.array([lonlat[1]]),
+        #    "time": data.time.data,
+        #}
+
+        #result = xarray.Dataset()
+        #for measurement_name, measurement in measurements.items():
+        #    result[measurement_name] = xarray.DataArray(
+        #        data[measurement_name],
+        #        dims=("time", "longitude", "latitude"),
+        #        coords=coords,
+        #        attrs={
+        #            key: value
+        #            for key, value in measurement.items()
+        #            if key in ["flags_definition"]
+        #        },
+        #    )
+        #return result
 
     def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:
         raise NotImplementedError
@@ -545,7 +783,7 @@ class PixelDrill(Process):
         )
 
 
-class PolygonDrill(Process):
+class PolygonDrill(Process): # DEPRECATED
     def __init__(self, about, input, style):
         if "geometry_type" in about:
             assert about["geometry_type"] == "polygon"
@@ -566,15 +804,6 @@ class PolygonDrill(Process):
         self.style = style
         self.mask_all_touched = False
         self.json_version = "v8"
-
-        # self.dask_client = dask_client = Client(
-        #     n_workers=num_dask_workers(), processes=True, threads_per_worker=1
-        # )
-        self.dask_enabled = True
-        
-        if self.dask_enabled:
-            # get the Dask Client associated with the current Gunicorn worker
-            self.dask_client = worker_client()
 
     def input_formats(self):
         return [
@@ -598,100 +827,104 @@ class PolygonDrill(Process):
         ]
 
     def request_handler(self, request, response):
+        name = _get_geometry_id(request)
         time = _get_time(request)
         feature = _get_feature(request)
         parameters = _get_parameters(request)
 
-        result = self.query_handler(time, feature, parameters=parameters)
+        result = self.query_handler(name, time, feature, parameters=parameters)
 
-        if self.style['csv']:
-            outputs = self.render_outputs(result["data"], None)
-        
-        elif self.style['table']:
-            outputs = self.render_outputs(result["data"], result["chart"])
-        
+        if 'csv' in self.style:
+            outputs = self.render_outputs(result["data"], None, name=name)
+        elif 'table' in self.style:
+            outputs = self.render_outputs(result["data"], result["chart"], name=name)
+        else:
+            raise ProcessError('No output style configured for process!')
+
         _populate_response(response, outputs)
         return response
 
     @log_call
-    def query_handler(self, time, feature, parameters=None):
+    def query_handler(self, name, time, feature, dask_client=None, parameters=None):
         if parameters is None:
             parameters = {}
 
-        configure_s3_access(
-            # aws_unsigned=True,
-            region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
-            client=self.dask_client,
-        )
+        if dask_client is None:
+            dask_client = Client(
+                #n_workers=num_workers(), processes=True, threads_per_worker=1
+                n_workers=1, processes=True, threads_per_worker=num_workers()
+            )
 
-        with datacube.Datacube() as dc:
-            data = self.input_data(dc, time, feature)
+        with dask_client:
+            configure_s3_access(
+                aws_unsigned=False,#True,
+                region_name=os.getenv("AWS_DEFAULT_REGION", "auto"),
+                client=dask_client,
+            )
 
-        df = self.process_data(data, {"time": time, "feature": feature, **parameters})
-        
+            with datacube.Datacube() as dc:
+                data = self.input_data(dc, time, feature)
+
+        df = self.process_data(data, {"name": name, "time": time, "feature": feature, **parameters})
+
         # If csv specified, return timeseries in csv form
-        if self.style['csv']:
+        if 'csv' in self.style:
             return {"data": df}
-    
         # If table style specified in config, return chart (static timeseries)
-        elif self.style['table'] is not None:
+        elif 'table' in self.style:
             chart = self.render_chart(df)
             return {"data": df, "chart": chart}
-        
-        
+        else:
+            return {}
 
     def input_data(self, dc, time, feature):
         if time is None:
             bag = self.input.query(dc, geopolygon=feature)
         else:
             bag = self.input.query(dc, time=time, geopolygon=feature)
-        
         output_crs = self.input.get('output_crs')
         resolution = self.input.get('resolution')
         align = self.input.get('align')
 
         if not (output_crs and resolution):
-            print('parameters for Geobox not found in inputs')
             if type(self.input) in (Product,):
-                print('Checking grid_spec in product')
-                if bag.product_definitions[self.input._product].grid_spec:
-                    print('grid_spec exists - do nothing')
-                else:
+                if not bag.product_definitions[self.input._product].grid_spec:
                     output_crs = mostcommon_crs(list(bag.bag))
-
             elif type(self.input) in (Juxtapose,):
-                print('Checking grid_spec of each product')
-                print(list(bag.product_definitions.values()))
-
                 grid_specs = [product_definition.grid_spec for product_definition in list(bag.product_definitions.values()) if getattr(product_definition, 'grid_spec', None)]
-                if len(set(grid_specs)) == 1:
-                    print('grid_spec exists for all products and are all the same - do nothing')
-
-                elif len(set(grid_specs)) > 1:
+                if len(set(grid_specs)) > 1:
                     raise ValueError('Multiple grid_spec detected across all products - override target output_crs, resolution in config')
-                
                 else:
                     if not resolution:
                         raise ValueError('add target resolution to config')
-
                     elif not output_crs:
                         output_crs = mostcommon_crs(bag.contained_datasets())                    
 
         box = self.input.group(bag, output_crs=output_crs, resolution=resolution, align=align)
 
         if self.about.get("guard_rail", True):
+            # HACK: Get around issue where VirtualDatasetBox has a geobox but thinks it doesn't because load_natively flag is True.
+            # Need load_natively to be False to be able to call box.shape() inside guard_rail check function.
+            # Don't have time to understand how VirtualDatasets work and why this is happening in any more detail - just need the drill to work :)
+            run_hack = box.load_natively and box.geobox is not None
+            if run_hack:
+                load_natively = box.load_natively
+                box.load_natively = False
             _guard_rail(self.input, box)
+            if run_hack:
+                box.load_natively = load_natively
 
         # TODO customize the number of processes
-        if self.dask_enabled:
-            data = self.input.fetch(box, dask_chunks={"time": 1})
-        else:
-            data = self.input.fetch(box)
-
+        data = self.input.fetch(box, dask_chunks={"time": 1})
         mask = geometry_mask(
             feature, data.geobox, all_touched=self.mask_all_touched, invert=True
         )
 
+        data = self.mask_polygon(data, mask)
+
+        return data
+
+    def mask_polygon(self, data: xarray.Dataset, mask) -> xarray.Dataset:
         # mask out data outside requested polygon
         for band_name, band_array in data.data_vars.items():
             if "nodata" in band_array.attrs:
@@ -700,7 +933,6 @@ class PolygonDrill(Process):
                 )
             else:
                 data[band_name] = band_array.where(mask)
-
         return data
 
     def process_data(self, data: xarray.Dataset, parameters: dict) -> pandas.DataFrame:
